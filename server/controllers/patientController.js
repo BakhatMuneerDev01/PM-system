@@ -103,6 +103,7 @@ const createPatient = async (req, res) => {
             emergencyContact,
             user: req.user._id
         });
+        await patient.save();
         res.status(201).json(patient);
     } catch (error) {
         console.error('Create patient error:', error.message);

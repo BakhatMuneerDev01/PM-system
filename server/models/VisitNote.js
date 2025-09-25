@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 const visitNoteSchema = new mongoose.Schema({
-    visit: {type: mongoose.Schema.Types.ObjectId, ref: 'Visit', required: ture},
+    visit: {type: mongoose.Schema.Types.ObjectId, ref: 'Visit', required: true},
     observations: {type: String},
     treatmentNotes: {type: String},
     followUpInstructions: {type: String},

@@ -21,7 +21,8 @@ const registerUser = async (req, res) => {
         if (password.length < 8) {
             return res.status(400).json({ message: 'Password must be at least 8 characters' });
         }
-        const userExists = await User.find({ $or: [{ username }, { email }] });
+        const userExists = await User.findOne({ $or: [{ username }, { email }] });
+
         if (userExists) {
             return res.status(400).json({
                 message: userExists.email === email ? 'Email already registered' : 'Username already taken'
