@@ -1,8 +1,4 @@
-export { default as Button } from './Button'
-export { default as Modal } from './Modal'
-export { default as Input } from './Input'
-export { default as Table } from './Table'
-export { default as Title } from './Title'
-export { default as Pagination } from './Pagination'
-export { default as SearchBar } from './SearchBar'
-export {default as Sort} from './Sort'
+export { default as Button } from './Button';
+export { default as Modal } from './Modal';
+export { default as Input } from './Input';
+export { default as Title } from './Title';

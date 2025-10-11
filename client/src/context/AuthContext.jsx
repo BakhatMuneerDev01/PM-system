@@ -1,96 +1,60 @@
-import { createContext, useContext, useState, useEffect } from 'react';
-import { users } from '../data/dummyData';
+import { createContext, useContext, useEffect, useState } from "react";
+import { loginUser, registerUser, getProfile, updateProfile } from "../api/authApi";
 
+// Create context
 const AuthContext = createContext();
 
+// Hook to use AuthContext easily
+export const useAuth = () => useContext(AuthContext);
+
+// Provider component
 export const AuthProvider = ({ children }) => {
-    const [user, setUser] = useState(null);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
+    const [user, setUser] = useState(null);   // stores logged in user data
+    const [loading, setLoading] = useState(true);
 
-    const loadUser = async () => {
-        setLoading(true);
-        setError(null);
-        const user = localStorage.getItem('user');
-        try {
-            if (user) {
-                setUser(JSON.parse(user));
-            }
-        } catch (error) {
-            setError(error.message);
-        } finally {
-            setLoading(false);
-        }
-    };
-
+    // On mount, check if token exists -> fetch profile
     useEffect(() => {
-        loadUser();
+        const token = localStorage.getItem("token");
+        if (token) {
+            getProfile()
+                .then((res) => setUser(res.data))
+                .catch(() => logout()); // token invalid -> logout
+        }
+        setLoading(false);
     }, []);
 
-    const login = (userData) => {
-        setLoading(true);
-        setError(null);
-        return new Promise((resolve, reject) => {
-            setTimeout(() => {
-                const user = users.find(u => u.email === userData.email && u.password === userData.password);
-                if (user) {
-                    setUser(user);
-                    localStorage.setItem('user', JSON.stringify(user));
-                    resolve(user);
-                } else {
-                    setError('Invalid email or password');
-                    reject(new Error('Invalid email or password'));
-                }
-                setLoading(false); // Ensure loading is set to false after the operation
-            }, 3000);
-        });
+    // Register
+    const register = async (data) => {
+        const res = await registerUser(data);
+        localStorage.setItem("token", res.data.token);
+        setUser(res.data); // backend already returns user info + token
+        return res.data;
     };
 
-    const signup = (userData) => {
-        setLoading(true);
-        setError(null);
-        return new Promise((resolve, reject) => {
-            setTimeout(() => {
-                const user = users.find(u => u.email === userData.email);
-                if (user) {
-                    setError('Email already exists');
-                    reject(new Error('Email already exists'));
-                } else {
-                    users.push(userData);
-                    setUser(userData);
-                    localStorage.setItem('user', JSON.stringify(userData));
-                    resolve(userData);
-                }
-                setLoading(false); // Ensure loading is set to false after the operation
-            }, 3000);
-        });
+    // Login
+    const login = async (data) => {
+        const res = await loginUser(data);
+        localStorage.setItem("token", res.data.token);
+        setUser(res.data);
+        return res.data;
     };
 
+    // Update Profile
+    const update = async (formData) => {
+        const res = await updateProfile(formData);
+        setUser(res.data);
+        return res.data;
+    };
+
+    // Logout
     const logout = () => {
+        localStorage.removeItem("token");
         setUser(null);
-        localStorage.removeItem('user');
     };
 
-
-    const value = {
-        user,
-        loading,
-        error,
-        login,
-        signup,
-        logout
-    };
     return (
-        <AuthContext.Provider value={value}>
+        <AuthContext.Provider value={{ user, loading, login, register, update, logout }}>
             {children}
         </AuthContext.Provider>
-    )
+    );
 };
-
-export const useAuth = () => {
-    const context = useContext(AuthContext);
-    if (!context) {
-        throw new Error('useAuth must be used within an AuthProvider')
-    }
-    return context;
-}

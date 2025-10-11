@@ -10,7 +10,7 @@ const PaymentDetailsSchema = new mongoose.Schema({
 });
 
 const userSchema = new mongoose.Schema({
-    fullName: { type: String },
+    fullName: {type: String},
     username: { type: String, required: true, unique: true, trim: true },
     email: { type: String, required: true, lowercase: true, trim: true },
     password: { type: String, required: true },
@@ -18,7 +18,7 @@ const userSchema = new mongoose.Schema({
         type: String,
         default: 'https://res.cloudinary.com/your_cloud_name/image/upload/v1/default_profile_image.png',
     },
-    role: { type: String, enum: ['admin', 'user'], default: 'user' },
+    role: { type: String, enum: ['admin', 'doctor'], default: 'admin' },
     phoneNumber: { type: String },
     paymentDetails: PaymentDetailsSchema
 }, { timestamps: true });

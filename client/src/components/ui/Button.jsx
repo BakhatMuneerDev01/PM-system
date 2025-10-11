@@ -1,39 +1,44 @@
 const Button = ({
+    size,
+    variant,
     children,
-    onClick,
     disabled = false,
+    onClick,
     type = 'button',
-    size = 'default',
-    variant = 'primary',  // ✅ fixed spelling
-    loading = false,
-    icons: Icons,
     className = '',
+    icon: Icon,
     ...props
 }) => {
     const sizes = {
-        sm: 'px-3 py-1.5 text-sm',
-        md: 'px-4 py-2 text-base',
-        lg: 'px-6 py-3 text-base'
+        small: 'px-2 py-1.5',
+        medium: 'px-4 py-2',
+        large: 'px-8 py-3'
     }
-    const variants = {  // ✅ fixed spelling
-        primary: 'bg-primary-600 hover:bg-primary-700 text-white focus:ring-primary-500',
-        secondary: 'bg-gray-200 hover:bg-gray-300 text-gray-700 focus:ring-gray-500',
-        danger: 'bg-red-600 hover:bg-red-700 text-white focus:ring-red-500',
-        outline: 'border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 focus:ring-primary-500',
-        ghost: 'hover:bg-gray-100 text-gray-700 focus:ring-gray-500',
+
+    const variants = {
+        primary: 'bg-primary-600 hover:bg-primary-700 text-white',
+        secondary: 'bg-gray-200 hover:bg-gray-300 text-gray-700',
+        danger: 'bg-red-600 hover:bg-red-700 text-white',
+        outline: 'border border-gray-300 bg-white hover:bg-gray-50 text-gray-700',
+        ghost: 'hover:bg-gray-200 text-gray-700',
+        link: 'text-primary-400 hover:text-primary-500'
     }
-    const baseClasses = 'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed'
-    const classes = `${baseClasses} ${sizes[size]} ${variants[variant]} ${className}`
+
+    const baseClasses = 'inline-flex items-center justify-center font-medium rounded-sm transition-all duration-200 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed'
+
+    const classes = `${className} ${baseClasses} ${sizes[size]} ${variants[variant]}`
+
     return (
         <button
             type={type}
+            disabled={disabled}
             onClick={onClick}
             className={classes}
-            disabled={disabled || loading}
+            size={size}
+            variant={variant}
             {...props}
-            icon={Icons}
-        >   
-            {Icons && <Icons />}
+        >
+            {Icon && <Icon className={`${className} mr-2 w-4 h-4`} />}
             {children}
         </button>
     )

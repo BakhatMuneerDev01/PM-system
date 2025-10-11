@@ -50,21 +50,32 @@ const getPatients = async (req, res) => {
  * @route GET /api/patients/:id
  * @access Private
  */
+// In backend/controllers/patientController.js - CURRENT PROBLEMATIC CODE
+// In backend/controllers/patientController.js - FIXED VERSION
 const getPatientById = async (req, res) => {
     try {
         const patient = await Patient.findOne({
             _id: req.params.id,
             user: req.user._id,
         });
+
         if (patient) {
-            const recentVisits = await Visit.findOne({ patient: patient._id })
-                .sort({ date: -1 })
-                .limit(5)
-                .populate('notes');
+            // Get recent visits - handle case when no visits exist
+            let recentVisits = [];
+            try {
+                recentVisits = await Visit.find({ patient: patient._id })
+                    .sort({ date: -1 })
+                    .limit(5)
+                    .populate('notes');
+            } catch (visitError) {
+                console.log('No visits found for patient:', patient._id);
+                // Continue with empty array - this is normal for new patients
+            }
+
             res.json({
                 ...patient.toObject(),
-                recentVisits
-            })
+                recentVisits: recentVisits || [] // Ensure it's always an array
+            });
         } else {
             res.status(404).json({ message: 'Patient not found' });
         }
