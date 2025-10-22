@@ -5,7 +5,7 @@ import { Input, Button, Title, Modal } from '../components/ui/base';
 import { usePatient } from "../context/PatientContext";
 import LoadingSpinner from "../components/LoadingSpinner";
 import Pagination from "../utils/Pagination";
-import EditPatientModal from "../components/EditPatientModal"; // path relative to PatientList.jsx
+import EditPatientModal from "../components/EditPatientModal";
 
 const Patients = () => {
   const {
@@ -13,8 +13,6 @@ const Patients = () => {
     loading,
     fetchPatients,
     addPatient,
-    editPatient,
-    fetchPatientById,
   } = usePatient();
 
   const navigate = useNavigate();
@@ -31,24 +29,45 @@ const Patients = () => {
     address: "",
   });
 
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
-  const patientsPerPage = 10;
-  // Derived pagination values
-  const totalPages = Math.ceil(patients.length / patientsPerPage);
-  const currentPatients = patients.slice(
-    (currentPage - 1) * patientsPerPage,
-    currentPage * patientsPerPage
-  );
-  // Fetch patients on load + whenever search/sort changes
+  // Pagination state - FIXED: Use actual pagination data from API
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalPatients: 0,
+    hasNextPage: false,
+    hasPrevPage: false,
+    limit: 10
+  });
+
+  // Fetch patients on load + whenever search/sort/page changes - FIXED
   useEffect(() => {
-    fetchPatients({ search, sortBy });
-  }, [search, sortBy]);
-  // Add new patient
+    fetchPatientsWithPagination();
+  }, [search, sortBy, pagination.currentPage]);
+
+  const fetchPatientsWithPagination = async () => {
+    try {
+      const params = {
+        search,
+        sortBy,
+        page: pagination.currentPage,
+        limit: pagination.limit
+      };
+      const result = await fetchPatients(params);
+
+      if (result && result.pagination) {
+        setPagination(result.pagination);
+      }
+    } catch (error) {
+      console.error('Failed to fetch patients:', error);
+    }
+  };
+
   const handleAddPatient = async () => {
     await addPatient(newPatient);
     setNewPatient({ fullName: "", phoneNumber: "", address: "" });
     setIsModalOpen(false);
+    // Refresh the list to show the new patient
+    fetchPatientsWithPagination();
   };
 
   const openEdit = (patient) => {
@@ -60,7 +79,41 @@ const Patients = () => {
     setEditingPatient(null);
     setIsEditOpen(false);
   };
-  // Columns for table
+
+  // Handle page changes - FIXED
+  const handlePageChange = (newPage) => {
+    setPagination(prev => ({
+      ...prev,
+      currentPage: newPage
+    }));
+  };
+
+  const handlePreviousPage = () => {
+    if (pagination.hasPrevPage) {
+      setPagination(prev => ({
+        ...prev,
+        currentPage: prev.currentPage - 1
+      }));
+    }
+  };
+
+  const handleNextPage = () => {
+    if (pagination.hasNextPage) {
+      setPagination(prev => ({
+        ...prev,
+        currentPage: prev.currentPage + 1
+      }));
+    }
+  };
+
+  // Reset to page 1 when search or sort changes - FIXED
+  useEffect(() => {
+    setPagination(prev => ({
+      ...prev,
+      currentPage: 1
+    }));
+  }, [search, sortBy]);
+
   const columns = [
     { key: "fullName", name: "Full Name" },
     { key: "phoneNumber", name: "Phone Number" },
@@ -104,7 +157,7 @@ const Patients = () => {
                 variant="outline"
                 size="small"
                 icon={RefreshCcw}
-                onClick={() => fetchPatients({ search, sortBy })}
+                onClick={fetchPatientsWithPagination}
                 className="text-sm text-gray-400"
               >
                 Refresh
@@ -130,58 +183,65 @@ const Patients = () => {
                 </tr>
               </thead>
               <tbody>
-                {currentPatients.map((patient) => (
-                  <tr key={patient._id} className="border-t border-gray-300">
-                    <td className="py-1.5 px-1 text-sm text-gray-500">
-                      {patient.fullName}
-                    </td>
-                    <td className="py-1.5 px-1 text-sm text-gray-500">
-                      {patient.phoneNumber}
-                    </td>
-                    <td className="py-1.5 px-1 text-sm text-gray-500">
-                      {patient.address}
-                    </td>
-                    <td className="py-1.5 px-1 text-sm text-gray-500">
-                      {patient.lastVisit
-                        ? new Date(patient.lastVisit).toLocaleDateString()
-                        : "—"}
-                    </td>
-                    <td className="py-1.5 px-1 text-sm text-blue-600 cursor-pointer flex items-center justify-start gap-2">
-                      <button
-                        onClick={() => navigate(`/patients/${patient._id}`)}
-                      >
-                        <Eye
-                          className="w-4 h-4"
-                        />
-                      </button>
-                      {/* Pencil opens the modal to add DOB / emergency contact */}
-                      <button
-                        title="Edit extra info"
-                        onClick={() => openEdit(patient)}
-                      >
-                        <Edit className="w-5 h-5" />
-                      </button>
+                {patients && patients.length > 0 ? (
+                  patients.map((patient) => (
+                    <tr key={patient._id} className="border-t border-gray-300">
+                      <td className="py-1.5 px-1 text-sm text-gray-500">
+                        {patient.fullName}
+                      </td>
+                      <td className="py-1.5 px-1 text-sm text-gray-500">
+                        {patient.phoneNumber}
+                      </td>
+                      <td className="py-1.5 px-1 text-sm text-gray-500">
+                        {patient.address}
+                      </td>
+                      <td className="py-1.5 px-1 text-sm text-gray-500">
+                        {patient.lastVisit
+                          ? new Date(patient.lastVisit).toLocaleDateString()
+                          : "—"}
+                      </td>
+                      <td className="py-1.5 px-1 text-sm text-blue-600 cursor-pointer flex items-center justify-start gap-2">
+                        <button
+                          onClick={() => navigate(`/patients/${patient._id}`)}
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        <button
+                          title="Edit extra info"
+                          onClick={() => openEdit(patient)}
+                        >
+                          <Edit className="w-5 h-5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={columns.length} className="py-4 text-center text-gray-500">
+                      No patients found
                     </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           )}
         </div>
-        {/* Pagination Controls */}
-        {patients.length > 0 && (
+
+        {/* Pagination Controls - FIXED: Use actual pagination data */}
+        {pagination.totalPatients > 0 && (
           <Pagination
-            from={(currentPage - 1) * patientsPerPage + 1}
-            to={Math.min(currentPage * patientsPerPage, patients.length)}
-            total={patients.length}
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPrevious={() => setCurrentPage((prev) => prev - 1)}
-            onNext={() => setCurrentPage((prev) => prev + 1)}
-            onPageChange={(page) => setCurrentPage(page)}
+            from={(pagination.currentPage - 1) * pagination.limit + 1}
+            to={Math.min(pagination.currentPage * pagination.limit, pagination.totalPatients)}
+            total={pagination.totalPatients}
+            currentPage={pagination.currentPage}
+            totalPages={pagination.totalPages}
+            onPrevious={handlePreviousPage}
+            onNext={handleNextPage}
+            onPageChange={handlePageChange}
           />
         )}
       </div>
+
       {/* Add Patient Modal */}
       <Modal
         title="Add New Patient"

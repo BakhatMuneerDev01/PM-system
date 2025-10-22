@@ -1,10 +1,27 @@
-// src/components/VisitDetailsModal.jsx
 import React from 'react';
-import { Modal, Title } from './ui/base';
-import { Calendar, MapPin, FileText } from 'lucide-react';
+import { Modal, Button } from './ui/base';
+import { Calendar, MapPin, FileText, Edit, Trash2 } from 'lucide-react';
 
-const VisitDetailsModal = ({ visit, isOpen, onClose }) => {
+const VisitDetailsModal = ({ visit, isOpen, onClose, onEdit, onDelete }) => {
     if (!visit) return null;
+
+    const handleEdit = () => {
+        if (onEdit && typeof onEdit === 'function') {
+            onEdit(visit);
+        } else {
+            console.warn('onEdit function not provided to VisitDetailsModal');
+        }
+    };
+
+    const handleDelete = () => {
+        if (window.confirm('Are you sure you want to delete this visit?')) {
+            if (onDelete && typeof onDelete === 'function') {
+                onDelete(visit._id);
+            } else {
+                console.warn('onDelete function not provided to VisitDetailsModal');
+            }
+        }
+    };
 
     return (
         <Modal
@@ -80,6 +97,32 @@ const VisitDetailsModal = ({ visit, isOpen, onClose }) => {
                                 <p className="text-sm text-gray-600 mb-1">Follow-up</p>
                                 <p className="text-gray-700">{visit.notes.followUpInstructions}</p>
                             </div>
+                        )}
+                    </div>
+                )}
+
+                {/* Action Buttons - Only show if handlers are provided */}
+                {(onEdit || onDelete) && (
+                    <div className="flex justify-end gap-2 pt-4 border-t">
+                        {onEdit && (
+                            <Button
+                                variant="outline"
+                                size="small"
+                                icon={Edit}
+                                onClick={handleEdit}
+                            >
+                                Edit Visit
+                            </Button>
+                        )}
+                        {onDelete && (
+                            <Button
+                                variant="danger"
+                                size="small"
+                                icon={Trash2}
+                                onClick={handleDelete}
+                            >
+                                Delete Visit
+                            </Button>
                         )}
                     </div>
                 )}

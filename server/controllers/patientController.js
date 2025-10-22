@@ -1,5 +1,5 @@
 import Patient from '../models/Patient.js';
-import Visit from '../models/Visit.js';
+
 /**
  * Get all patients with search, sort, and pagination
  * @route GET /api/patients
@@ -7,8 +7,15 @@ import Visit from '../models/Visit.js';
  */
 const getPatients = async (req, res) => {
     try {
-        const { search, sortBy = 'fullName', sortOrder = 'asc', page = 1, limit = 10 } = req.query;
-        // Build search qurey
+        const {
+            search,
+            sortBy = 'fullName',
+            sortOrder = 'asc',
+            page = 1,
+            limit = 10
+        } = req.query;
+
+        // Build search query
         let query = { user: req.user._id };
 
         if (search) {
@@ -16,42 +23,54 @@ const getPatients = async (req, res) => {
                 { fullName: { $regex: search, $options: 'i' } },
                 { phoneNumber: { $regex: search, $options: 'i' } },
                 { address: { $regex: search, $options: 'i' } }
-            ]
+            ];
         }
+
         // Build sort object
         const sort = {};
         sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
-        // Calculate pagination
-        const skip = (parseInt(page) - 1) * parseInt(limit);
+
+        // Convert to numbers and set defaults
+        const pageNum = parseInt(page);
+        const limitNum = parseInt(limit);
+        const skip = (pageNum - 1) * limitNum;
+
         // Execute query with pagination
         const patients = await Patient.find(query)
             .sort(sort)
             .skip(skip)
-            .limit(parseInt(limit));
+            .limit(limitNum);
+
         // Get total count for pagination
         const total = await Patient.countDocuments(query);
+
+        // Calculate pagination metadata - FIXED LOGIC
+        const totalPages = Math.ceil(total / limitNum);
+        const hasNextPage = pageNum < totalPages;
+        const hasPrevPage = pageNum > 1;
+
         res.json({
             patients,
             pagination: {
-                currentPage: parseInt(page),
-                totalPages: Math.ceil(total / parseInt(limit)),
+                currentPage: pageNum,
+                totalPages: totalPages,
                 totalPatients: total,
-                hasNextPage: skip + patients.length < total,
-                hasPrevPage: parseInt(page) > 1
+                hasNextPage: hasNextPage,
+                hasPrevPage: hasPrevPage,
+                limit: limitNum
             }
         });
     } catch (error) {
         console.error('Get patients error:', error.message);
         res.status(500).json({ message: 'Server error getting patients' });
     }
-}
+};
+
 /**
  * Get single patient by ID
  * @route GET /api/patients/:id
  * @access Private
  */
-// In backend/controllers/patientController.js - CURRENT PROBLEMATIC CODE
-// In backend/controllers/patientController.js - FIXED VERSION
 const getPatientById = async (req, res) => {
     try {
         const patient = await Patient.findOne({
@@ -84,6 +103,7 @@ const getPatientById = async (req, res) => {
         res.status(500).json({ message: 'Server error getting patient' });
     }
 };
+
 /**
  * Create new patient
  * @route POST /api/patients
@@ -92,19 +112,22 @@ const getPatientById = async (req, res) => {
 const createPatient = async (req, res) => {
     try {
         const { fullName, phoneNumber, address, dateOfBirth, emergencyContact } = req.body;
-        // Basic valedation
+
+        // Basic validation
         if (!fullName || !phoneNumber || !address) {
-            return res.status(400).json({ message: 'Please provide full name, phone number' });
-        };
+            return res.status(400).json({ message: 'Please provide full name, phone number, and address' });
+        }
+
         // Check if patient with same phone number already exists for this user
         const existingPatient = await Patient.findOne({
             phoneNumber,
             user: req.user._id,
-        })
+        });
 
         if (existingPatient) {
             return res.status(400).json({ message: 'Patient with this phone number already exists' });
         }
+
         // Create new patient
         const patient = new Patient({
             fullName,
@@ -114,13 +137,15 @@ const createPatient = async (req, res) => {
             emergencyContact,
             user: req.user._id
         });
+
         await patient.save();
         res.status(201).json(patient);
     } catch (error) {
         console.error('Create patient error:', error.message);
         res.status(500).json({ message: 'Server error creating patient' });
     }
-}
+};
+
 /**
  * Update patient
  * @route PUT /api/patients/:id
@@ -131,7 +156,7 @@ const updatePatient = async (req, res) => {
         const patient = await Patient.findOne({
             _id: req.params.id,
             user: req.user._id,
-        })
+        });
 
         if (patient) {
             // Update patient fields
@@ -147,7 +172,7 @@ const updatePatient = async (req, res) => {
                 patient.emergencyContact = {
                     ...patient.emergencyContact,
                     ...req.body.emergencyContact,
-                }
+                };
             }
 
             const updatedPatient = await patient.save();
@@ -160,6 +185,7 @@ const updatePatient = async (req, res) => {
         res.status(500).json({ message: 'Server error updating patient' });
     }
 };
+
 /**
  * Delete patient
  * @route DELETE /api/patients/:id
@@ -186,4 +212,5 @@ const deletePatient = async (req, res) => {
         res.status(500).json({ message: 'Server error deleting patient' });
     }
 };
+
 export { getPatients, getPatientById, createPatient, updatePatient, deletePatient };

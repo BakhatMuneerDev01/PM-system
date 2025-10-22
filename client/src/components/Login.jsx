@@ -64,7 +64,7 @@ const Login = () => {
             // call backend
             await login(formData);
             toast.success("Login successful");
-            navigate("/patients");
+            navigate("/");
         } catch (err) {
             const message =
                 err.response?.data?.message || "An error occurred during login";

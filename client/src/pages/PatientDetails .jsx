@@ -10,22 +10,26 @@ import {
   Eye,
   Edit
 } from 'lucide-react';
-import { Button, Title, Modal } from '../components/ui/base';
+import { Button, Title } from '../components/ui/base';
 import { usePatient } from '../context/PatientContext';
 import { useVisits } from '../context/VisitContext';
 import LoadingSpinner from '../components/LoadingSpinner';
 import VisitDetailsModal from '../components/VisitDetailsModal';
 import EditPatientModal from '../components/EditPatientModal';
+import EditVisitModal from '../components/EditVisitModal';
+import toast from 'react-hot-toast';
 
 const PatientDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { patient, fetchPatientById, loading: patientLoading } = usePatient();
-  const { visits, fetchVisitsByPatient, loading: visitsLoading } = useVisits();
+  const { visits, fetchVisitsByPatient, removeVisit, loading: visitsLoading } = useVisits();
 
   const [selectedVisit, setSelectedVisit] = useState(null);
+  const [editingVisit, setEditingVisit] = useState(null);
   const [isVisitModalOpen, setIsVisitModalOpen] = useState(false);
   const [isEditPatientModalOpen, setIsEditPatientModalOpen] = useState(false);
+  const [isEditVisitModalOpen, setIsEditVisitModalOpen] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -41,6 +45,24 @@ const PatientDetails = () => {
 
   const handleEditPatient = () => {
     setIsEditPatientModalOpen(true);
+  };
+
+  const handleEditVisit = (visit) => {
+    setIsVisitModalOpen(false); // Close details modal
+    setEditingVisit(visit);
+    setIsEditVisitModalOpen(true);
+  };
+
+  const handleDeleteVisit = async (visitId) => {
+    try {
+      await removeVisit(visitId);
+      setIsVisitModalOpen(false);
+      // Refresh visits after deletion
+      await fetchVisitsByPatient(id);
+      toast.success('Visit deleted successfully');
+    } catch (error) {
+      toast.error('Failed to delete visit');
+    }
   };
 
   const formatDate = (dateString) => {
@@ -86,7 +108,6 @@ const PatientDetails = () => {
           Back to Patients
         </Button>
 
-        {/* Updated: Changed from "Add New Visit" to "Update Patient Details" */}
         <Button
           variant="primary"
           size="medium"
@@ -207,10 +228,11 @@ const PatientDetails = () => {
 
             {/* Show "View All Visits" button if there are more than 3 visits */}
             {visits.length > 3 && (
-              <div className="pt-4 text-center">
+              <div className="pt-4">
                 <Button
                   variant="outline"
                   size="medium"
+                  className="w-full"
                   onClick={() => navigate(`/patients/${id}/visits`)}
                 >
                   View All {visits.length} Visits
@@ -238,6 +260,8 @@ const PatientDetails = () => {
         visit={selectedVisit}
         isOpen={isVisitModalOpen}
         onClose={() => setIsVisitModalOpen(false)}
+        onEdit={handleEditVisit}
+        onDelete={handleDeleteVisit}
       />
 
       {/* Edit Patient Modal */}
@@ -245,6 +269,14 @@ const PatientDetails = () => {
         isOpen={isEditPatientModalOpen}
         onClose={() => setIsEditPatientModalOpen(false)}
         patient={patient}
+      />
+
+      {/* Edit Visit Modal */}
+      <EditVisitModal
+        isOpen={isEditVisitModalOpen}
+        onClose={() => setIsEditVisitModalOpen(false)}
+        visit={editingVisit}
+        patientId={id}
       />
     </div>
   );
@@ -260,48 +292,6 @@ const InfoRow = ({ icon: Icon, label, value }) => (
     </div>
   </div>
 );
-
-// Visit Table Row Component
-const VisitTableRow = ({ visit, onView }) => {
-  const truncateText = (text, maxLength = 60) => {
-    if (!text) return '—';
-    return text.length > maxLength ? `${text.substring(0, maxLength)}...` : text;
-  };
-
-  return (
-    <tr className="hover:bg-gray-50">
-      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-        {visit.date ? new Date(visit.date).toLocaleDateString() : '—'}
-      </td>
-      <td className="px-4 py-4 text-sm text-gray-900">
-        {visit.purpose || '—'}
-      </td>
-      <td className="px-4 py-4 text-sm text-gray-900">
-        {truncateText(visit.summary)}
-      </td>
-      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${visit.type === 'Emergency'
-          ? 'bg-red-100 text-red-800'
-          : visit.type === 'Initial Consultation'
-            ? 'bg-blue-100 text-blue-800'
-            : 'bg-green-100 text-green-800'
-          }`}>
-          {visit.type || '—'}
-        </span>
-      </td>
-      <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
-        <Button
-          variant="outline"
-          size="small"
-          icon={Eye}
-          onClick={onView}
-        >
-          View Details
-        </Button>
-      </td>
-    </tr>
-  );
-};
 
 // Visit Preview Item Component for PatientDetails
 const VisitPreviewItem = ({ visit, onView }) => {
@@ -369,4 +359,5 @@ const VisitPreviewItem = ({ visit, onView }) => {
     </div>
   );
 };
+
 export default PatientDetails;

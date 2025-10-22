@@ -166,11 +166,10 @@ const AddVisit = () => {
                 />
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-">
                 {/* Patient Information */}
                 <Section title="Patient Name">
-                    <div className="bg-gray-50 p-4 rounded-lg border">
-                        {patient ? (
+                    <div className="bg-gray-50 p-1.5 rounded-lg border">                        {patient ? (
                             <div className="flex items-center space-x-3">
                                 <User className="w-5 h-5 text-gray-400" />
                                 <span className="text-lg font-medium text-gray-900">

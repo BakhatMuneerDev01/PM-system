@@ -40,9 +40,14 @@ export const AuthProvider = ({ children }) => {
     };
 
     // Update Profile
+    // In the update function, ensure we're updating the user state properly
     const update = async (formData) => {
         const res = await updateProfile(formData);
-        setUser(res.data);
+        setUser({
+            ...user,
+            ...res.data,
+            profileImage: res.data.profileImage // Ensure profile image is updated
+        });
         return res.data;
     };
 

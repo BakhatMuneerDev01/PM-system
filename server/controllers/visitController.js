@@ -27,6 +27,7 @@ const getVisitsByPatient = async (req, res) => {
         res.status(500).json({ message: 'Server error getting visits' });
     }
 };
+
 /**
  * Get single visit by ID
  * @route GET /api/visits/:id
@@ -178,4 +179,48 @@ const deleteVisit = async (req, res) => {
     }
 }
 
-export { getVisitsByPatient, getVisitById, createVisit, updateVisit, deleteVisit };
+/**
+ * Delete all visits for a specific patient
+ * @route DELETE /api/visits/patient/:patientId
+ * @access Private
+ */
+const deleteAllVisitsForPatient = async (req, res) => {
+    try {
+        const { patientId } = req.params;
+
+        // Verify patient belongs to authenticated user
+        const patient = await Patient.findOne({
+            _id: patientId,
+            user: req.user._id,
+        });
+
+        if (!patient) {
+            return res.status(404).json({ message: 'Patient not found' });
+        }
+
+        // Find all visits for this patient
+        const visits = await Visit.find({ patient: patientId });
+
+        // Delete all associated visit notes and visits
+        for (const visit of visits) {
+            if (visit.notes) {
+                await VisitNote.findByIdAndDelete(visit.notes);
+            }
+            await Visit.findByIdAndDelete(visit._id);
+        }
+
+        // Update patient's lastVisit field
+        patient.lastVisit = undefined;
+        await patient.save();
+
+        res.json({
+            message: 'All visits deleted successfully',
+            deletedCount: visits.length
+        });
+    } catch (error) {
+        console.error('Delete all visits error:', error.message);
+        res.status(500).json({ message: 'Server error deleting visits' });
+    }
+};
+
+export { getVisitsByPatient, getVisitById, createVisit, updateVisit, deleteVisit, deleteAllVisitsForPatient };

@@ -9,6 +9,8 @@ import MainLayout from './components/layout/MainLayout';
 import PatientDetails from "./pages/PatientDetails ";
 import AddVisit from "./pages/AddVisit";
 import VisitsList from "./pages/VisitsList";
+import Profile from "./pages/Profile";
+import VisitsPage from './pages/VisitsPage';
 
 function App() {
   return (
@@ -19,13 +21,13 @@ function App() {
         <Route path="/signup" element={<SignupPage />} />
         {/* Authenticated Routes */}
         <Route path="/" element={<MainLayout />}>
-          <Route index element={<Dashboard />} /> {/* Default route */}
+          <Route index element={<Dashboard />} />
           <Route path="patients" element={<Patients />} />
           <Route path="/patients/:id" element={<PatientDetails />} />
-          // In App.jsx, add this route inside the MainLayout
           <Route path="patients/:patientId/visits/new" element={<AddVisit />} />
-          // In App.jsx, add this route inside the MainLayout
-          <Route path="patients/:id/visits" element={<VisitsList />} />
+          <Route path="patients/:id/visits" element={<VisitsList />} /> {/* Add this line */}
+          <Route path="visits" element={<VisitsPage />} />
+          <Route path="profile" element={<Profile />} />
           <Route path="messaging" element={<Messaging />} />
         </Route>
       </Routes>

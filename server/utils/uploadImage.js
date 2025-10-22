@@ -1,64 +1,93 @@
-// utils/fileUpload.js
+// utils/uploadImage.js
 import multer from "multer";
 import { v2 as cloudinary } from "cloudinary";
-import fs from "fs";
-import path from "path";
+import { Readable } from 'stream';
 
-// --- Multer Setup (temporary local storage) ---
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadPath = "./public/temp";
-    if (!fs.existsSync(uploadPath)) {
-      fs.mkdirSync(uploadPath, { recursive: true });
+// Use memory storage instead of disk storage for better performance
+const storage = multer.memoryStorage();
+
+export const upload = multer({
+  storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'), false);
     }
-    cb(null, uploadPath);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    const ext = path.extname(file.originalname);
-    cb(null, file.fieldname + "-" + uniqueSuffix + ext);
-  },
+  }
 });
 
-export const upload = multer({ storage });
+// Initialize Cloudinary configuration - this will be called from server.js
+let cloudinaryConfigured = false;
 
-// --- Cloudinary Setup ---
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
+export const configureCloudinary = () => {
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+  const apiKey = process.env.CLOUDINARY_API_KEY;
+  const apiSecret = process.env.CLOUDINARY_API_SECRET;
 
-// --- Utility Function ---
-// In uploadImage.js - IMPROVED VERSION:
-export const uploadToCloudinary = async (file, folder = "healthcare-profiles") => {
-  if (!file) return null;
+  console.log('Configuring Cloudinary with:', {
+    cloud_name: cloudName,
+    api_key: apiKey ? `${apiKey.substring(0, 5)}...` : 'Missing',
+    api_secret: apiSecret ? 'Set' : 'Missing'
+  });
+
+  if (!cloudName || !apiKey || !apiSecret) {
+    throw new Error('Cloudinary configuration is incomplete. Check your environment variables.');
+  }
+
+  cloudinary.config({
+    cloud_name: cloudName,
+    api_key: apiKey,
+    api_secret: apiSecret,
+  });
+
+  cloudinaryConfigured = true;
+  console.log('Cloudinary configured successfully');
+};
+
+// Improved upload function that works with buffers
+export const uploadToCloudinary = async (fileBuffer, folder = "healthcare-profiles") => {
+  if (!fileBuffer) {
+    throw new Error('No file buffer provided');
+  }
+
+  // Verify Cloudinary is configured
+  if (!cloudinaryConfigured) {
+    throw new Error('Cloudinary not configured. Call configureCloudinary() first.');
+  }
 
   try {
-    let result;
-    
-    // If it's a file path (string)
-    if (typeof file === 'string') {
-      result = await cloudinary.uploader.upload(file, { folder });
-      fs.unlinkSync(file); // Remove temp file
-    } 
-    // If it's a buffer (from memory)
-    else if (Buffer.isBuffer(file)) {
-      result = await new Promise((resolve, reject) => {
-        const uploadStream = cloudinary.uploader.upload_stream(
-          { folder, resource_type: 'image' },
-          (error, result) => {
-            if (error) reject(error);
-            else resolve(result);
+    return new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder,
+          resource_type: 'image',
+          transformation: [
+            { width: 500, height: 500, crop: "limit" },
+            { quality: "auto" },
+            { format: "jpg" }
+          ]
+        },
+        (error, result) => {
+          if (error) {
+            console.error("Cloudinary upload error:", error);
+            reject(new Error(`Cloudinary upload failed: ${error.message}`));
+          } else {
+            console.log("Cloudinary upload successful:", result.secure_url);
+            resolve(result.secure_url);
           }
-        );
-        uploadStream.end(file);
-      });
-    }
+        }
+      );
 
-    return result.secure_url;
+      // Convert buffer to stream and upload
+      const bufferStream = Readable.from(fileBuffer);
+      bufferStream.pipe(uploadStream);
+    });
   } catch (error) {
-    console.error("Cloudinary Upload Error:", error);
-    return null;
+    console.error("Cloudinary upload exception:", error);
+    throw new Error(`Upload failed: ${error.message}`);
   }
 };

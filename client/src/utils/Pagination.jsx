@@ -35,7 +35,7 @@ const Pagination = ({
     const pageNumbers = generatePageNumbers();
 
     return (
-        <div className={`bg-slate-100 px-4 py-3 sm:px-6 ${className}`}>
+        <div className={`px-4 py-3 sm:px-6 ${className}`}>
             <div className="flex items-center justify-between">
                 <div className="flex items-center">
                     <p className="text-sm text-gray-700">
