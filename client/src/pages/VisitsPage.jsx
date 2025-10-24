@@ -221,12 +221,12 @@ const VisitsPage = () => {
     }
 
     return (
-        <div className="max-w-7xl mx-auto p-6 space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <Title title="Visit Schedule" Icon={Calendar} className="text-3xl mb-2" />
-                    <p className="text-gray-600">Manage and view all patient visits in one place</p>
+        <div className="max-w-7xl mx-auto p-4 md:p-6 space-y-4 md:space-y-6">
+            {/* Header - Responsive */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="text-center md:text-left">
+                    <Title title="Visit Schedule" Icon={Calendar} className="text-2xl md:text-3xl mb-2" />
+                    <p className="text-gray-600 text-sm md:text-base">Manage and view all patient visits in one place</p>
                 </div>
                 <Button
                     variant="primary"
@@ -238,8 +238,8 @@ const VisitsPage = () => {
                 </Button>
             </div>
 
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Stats Cards - Responsive */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                 <StatCard
                     title="Upcoming Visits"
                     value={stats.upcoming}
@@ -263,10 +263,10 @@ const VisitsPage = () => {
                 />
             </div>
 
-            {/* Tabs and Filters */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                {/* Tabs */}
-                <div className="flex space-x-1 mb-6">
+            {/* Tabs and Filters - Responsive */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
+                {/* Tabs - Responsive */}
+                <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-1 mb-4 md:mb-6">
                     <TabButton
                         active={activeTab === 'upcoming'}
                         onClick={() => setActiveTab('upcoming')}
@@ -283,8 +283,8 @@ const VisitsPage = () => {
                     </TabButton>
                 </div>
 
-                {/* Search and Filter Bar */}
-                <div className="flex flex-col lg:flex-row gap-4 mb-6">
+                {/* Search and Filter Bar - Responsive */}
+                <div className="flex flex-col lg:flex-row gap-3 md:gap-4 mb-4 md:mb-6">
                     <div className="flex-1">
                         <div className="relative">
                             <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
@@ -292,7 +292,7 @@ const VisitsPage = () => {
                                 placeholder="Search visits by patient, purpose, or type..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-10"
+                                className="pl-10 text-sm md:text-base"
                             />
                         </div>
                     </div>
@@ -303,15 +303,16 @@ const VisitsPage = () => {
                         icon={showFilters ? ChevronUp : ChevronDown}
                         onClick={() => setShowFilters(!showFilters)}
                     >
-                        Filters
+                        <span className="hidden sm:inline">Filters</span>
+                        <span className="sm:hidden">Show Filters</span>
                     </Button>
                 </div>
 
-                {/* Expandable Filters */}
+                {/* Expandable Filters - Responsive */}
                 {showFilters && (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg mb-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 p-3 md:p-4 bg-gray-50 rounded-lg mb-4 md:mb-6">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                            <label className="block text-sm font-medium text-gray-700 mb-1 md:mb-2">
                                 Visit Type
                             </label>
                             <select
@@ -328,7 +329,7 @@ const VisitsPage = () => {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                            <label className="block text-sm font-medium text-gray-700 mb-1 md:mb-2">
                                 Patient
                             </label>
                             <select
@@ -346,7 +347,7 @@ const VisitsPage = () => {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                            <label className="block text-sm font-medium text-gray-700 mb-1 md:mb-2">
                                 Date Range
                             </label>
                             <select
@@ -363,20 +364,20 @@ const VisitsPage = () => {
                     </div>
                 )}
 
-                {/* Results Count */}
-                <div className="flex items-center justify-between mb-4">
-                    <p className="text-sm text-gray-600">
+                {/* Results Count - Responsive */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3 md:mb-4">
+                    <p className="text-sm text-gray-600 text-center sm:text-left">
                         Showing {filteredVisits.length} {activeTab === 'upcoming' ? 'upcoming' : 'previous'} visits
                     </p>
                     {filteredVisits.length > 0 && (
-                        <p className="text-sm text-gray-500">
+                        <p className="text-xs md:text-sm text-gray-500 text-center sm:text-right">
                             Sorted by {activeTab === 'upcoming' ? 'date (soonest first)' : 'date (most recent first)'}
                         </p>
                     )}
                 </div>
 
-                {/* Visits List */}
-                <div className="space-y-4">
+                {/* Visits List - Responsive */}
+                <div className="space-y-3 md:space-y-4">
                     {filteredVisits.length > 0 ? (
                         filteredVisits.map(visit => (
                             <VisitCard
@@ -390,12 +391,12 @@ const VisitsPage = () => {
                             />
                         ))
                     ) : (
-                        <div className="text-center py-12">
-                            <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                        <div className="text-center py-8 md:py-12">
+                            <Calendar className="w-12 h-12 md:w-16 md:h-16 text-gray-300 mx-auto mb-3 md:mb-4" />
                             <h3 className="text-lg font-semibold text-gray-900 mb-2">
                                 No {activeTab === 'upcoming' ? 'Upcoming' : 'Previous'} Visits
                             </h3>
-                            <p className="text-gray-500 mb-6">
+                            <p className="text-gray-500 mb-4 md:mb-6 text-sm md:text-base">
                                 {activeTab === 'upcoming'
                                     ? "No upcoming visits match your current filters."
                                     : "No previous visits match your current filters."
@@ -403,12 +404,14 @@ const VisitsPage = () => {
                             </p>
                             <Button
                                 variant="primary"
+                                size="small"
                                 onClick={() => {
                                     setSearchTerm('');
                                     setSelectedType('all');
                                     setSelectedPatient('all');
                                     setDateRange('all');
                                 }}
+                                className="md:w-auto justify-center"
                             >
                                 Clear Filters
                             </Button>
@@ -436,7 +439,7 @@ const VisitsPage = () => {
     );
 };
 
-// Stat Card Component
+// Stat Card Component - Responsive
 const StatCard = ({ title, value, description, color, icon: Icon }) => {
     const colorClasses = {
         blue: 'bg-blue-50 text-blue-600',
@@ -445,26 +448,26 @@ const StatCard = ({ title, value, description, color, icon: Icon }) => {
     };
 
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
             <div className="flex items-center justify-between">
                 <div>
                     <p className="text-sm font-medium text-gray-600 mb-1">{title}</p>
-                    <p className="text-2xl font-bold text-gray-900">{value}</p>
-                    <p className="text-sm text-gray-500 mt-1">{description}</p>
+                    <p className="text-xl md:text-2xl font-bold text-gray-900">{value}</p>
+                    <p className="text-xs md:text-sm text-gray-500 mt-1">{description}</p>
                 </div>
-                <div className={`p-3 rounded-lg ${colorClasses[color]}`}>
-                    <Icon className="w-6 h-6" />
+                <div className={`p-2 md:p-3 rounded-lg ${colorClasses[color]}`}>
+                    <Icon className="w-5 h-5 md:w-6 md:h-6" />
                 </div>
             </div>
         </div>
     );
 };
 
-// Tab Button Component
+// Tab Button Component - Responsive
 const TabButton = ({ active, onClick, count, children }) => (
     <button
         onClick={onClick}
-        className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors duration-200 ${active
+        className={`flex items-center justify-center space-x-2 px-3 py-2 md:px-4 md:py-2 rounded-lg font-medium transition-colors duration-200 text-sm md:text-base ${active
                 ? 'bg-blue-500 text-white'
                 : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
             }`}
@@ -477,7 +480,7 @@ const TabButton = ({ active, onClick, count, children }) => (
     </button>
 );
 
-// Visit Card Component
+// Visit Card Component - Responsive
 const VisitCard = ({ visit, getVisitTypeConfig, onView, onEdit, onDelete, isUpcoming }) => {
     const config = getVisitTypeConfig(visit.type);
     const IconComponent = config.icon;
@@ -504,13 +507,13 @@ const VisitCard = ({ visit, getVisitTypeConfig, onView, onEdit, onDelete, isUpco
     const timeStatus = getTimeStatus();
 
     return (
-        <div className={`border-l-4 ${config.accent} ${config.bg} border rounded-lg p-6 hover:shadow-md transition-all duration-200`}>
-            <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
+        <div className={`border-l-4 ${config.accent} ${config.bg} border rounded-lg p-4 md:p-6 hover:shadow-md transition-all duration-200`}>
+            <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-3 md:gap-4">
                 <div className="flex-1">
-                    <div className="flex flex-wrap items-center gap-3 mb-3">
-                        <div className={`flex items-center gap-2 px-3 py-1 rounded-full ${config.badge} border`}>
-                            <IconComponent className={`w-4 h-4 ${config.iconColor}`} />
-                            <span className="text-sm font-medium">{visit.type}</span>
+                    <div className="flex flex-wrap items-center gap-2 md:gap-3 mb-2 md:mb-3">
+                        <div className={`flex items-center gap-1 md:gap-2 px-2 md:px-3 py-1 rounded-full ${config.badge} border`}>
+                            <IconComponent className={`w-3 h-3 md:w-4 md:h-4 ${config.iconColor}`} />
+                            <span className="text-xs md:text-sm font-medium">{visit.type}</span>
                         </div>
 
                         {timeStatus && (
@@ -526,23 +529,23 @@ const VisitCard = ({ visit, getVisitTypeConfig, onView, onEdit, onDelete, isUpco
                         )}
                     </div>
 
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    <h3 className="text-base md:text-lg font-semibold text-gray-900 mb-2">
                         {visit.purpose}
                     </h3>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
-                        <div className="flex items-center gap-3 text-sm text-gray-600">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 mb-2 md:mb-3">
+                        <div className="flex items-center gap-2 md:gap-3 text-sm text-gray-600">
                             <User className="w-4 h-4 text-gray-400" />
                             <div>
-                                <p className="font-medium text-gray-900">{visit.patientName}</p>
-                                <p className="text-gray-500">{visit.patientPhone}</p>
+                                <p className="font-medium text-gray-900 text-sm md:text-base">{visit.patientName}</p>
+                                <p className="text-gray-500 text-xs md:text-sm">{visit.patientPhone}</p>
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-3 text-sm text-gray-600">
+                        <div className="flex items-center gap-2 md:gap-3 text-sm text-gray-600">
                             <Clock className="w-4 h-4 text-gray-400" />
                             <div>
-                                <p className="font-medium text-gray-900">
+                                <p className="font-medium text-gray-900 text-sm md:text-base">
                                     {visitDate.toLocaleDateString('en-US', {
                                         weekday: 'short',
                                         month: 'short',
@@ -550,7 +553,7 @@ const VisitCard = ({ visit, getVisitTypeConfig, onView, onEdit, onDelete, isUpco
                                         year: 'numeric'
                                     })}
                                 </p>
-                                <p className="text-gray-500">
+                                <p className="text-gray-500 text-xs md:text-sm">
                                     {visitDate.toLocaleTimeString('en-US', {
                                         hour: '2-digit',
                                         minute: '2-digit'
@@ -561,14 +564,14 @@ const VisitCard = ({ visit, getVisitTypeConfig, onView, onEdit, onDelete, isUpco
                     </div>
 
                     {visit.summary && (
-                        <p className="text-sm text-gray-700 mb-3 line-clamp-2">
+                        <p className="text-sm text-gray-700 mb-2 md:mb-3 line-clamp-2">
                             {visit.summary}
                         </p>
                     )}
 
                     {visit.gpsLocation && (
-                        <div className="flex items-center gap-2 text-sm text-gray-500">
-                            <MapPin className="w-4 h-4" />
+                        <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm text-gray-500">
+                            <MapPin className="w-3 h-3 md:w-4 md:h-4" />
                             <span>
                                 {visit.gpsLocation.latitude?.toFixed(4)}, {visit.gpsLocation.longitude?.toFixed(4)}
                             </span>
@@ -576,14 +579,31 @@ const VisitCard = ({ visit, getVisitTypeConfig, onView, onEdit, onDelete, isUpco
                     )}
                 </div>
 
-                <div className="flex lg:flex-col gap-2">
+                <div className="flex lg:flex-col gap-2 self-stretch">
                     <Button
                         variant="outline"
                         size="small"
                         onClick={() => onView(visit)}
+                        className="flex-1 lg:flex-none justify-center text-xs md:text-sm"
                     >
                         View
-                    </Button>``
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="small"
+                        onClick={() => onEdit(visit)}
+                        className="flex-1 lg:flex-none justify-center text-xs md:text-sm"
+                    >
+                        Edit
+                    </Button>
+                    <Button
+                        variant="danger"
+                        size="small"
+                        onClick={() => onDelete(visit._id)}
+                        className="flex-1 lg:flex-none justify-center text-xs md:text-sm"
+                    >
+                        Delete
+                    </Button>
                 </div>
             </div>
         </div>

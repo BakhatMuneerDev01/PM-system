@@ -80,7 +80,7 @@ const PatientDetails = () => {
 
   if (!patient) {
     return (
-      <div className="max-w-6xl mx-auto p-6">
+      <div className="max-w-6xl mx-auto p-4 md:p-6">
         <div className="text-center">
           <Title title="Patient Not Found" />
           <Button
@@ -96,9 +96,9 @@ const PatientDetails = () => {
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
-      {/* Header with Back Button */}
-      <div className="flex items-center justify-between mb-6">
+    <div className="max-w-6xl mx-auto p-4 md:p-6">
+      {/* Header with Back Button - Fixed button alignment */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <Button
           variant="secondary"
           size="medium"
@@ -119,14 +119,14 @@ const PatientDetails = () => {
       </div>
 
       {/* Patient Information Card */}
-      <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+      <div className="bg-white rounded-lg shadow-lg p-4 md:p-6 mb-6">
         <Title
           title="Patient Details"
           Icon={UserIcon}
-          className="mb-6"
+          className="mb-4 md:mb-6 text-xl md:text-2xl"
         />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
           {/* Basic Information */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-gray-700 mb-4">
@@ -191,13 +191,13 @@ const PatientDetails = () => {
       </div>
 
       {/* Visit History Section */}
-      <div className="bg-white rounded-lg shadow-lg p-6">
-        <div className="flex items-center justify-between mb-6">
+      <div className="bg-white rounded-lg shadow-lg p-4 md:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <Title
             title="Visit History"
             className="text-xl"
           />
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
             <span className="text-sm text-gray-500">
               {visits?.length || 0} visits total
             </span>
@@ -205,6 +205,7 @@ const PatientDetails = () => {
               variant="primary"
               size="medium"
               onClick={() => navigate(`/patients/${id}/visits/new`)}
+              className="w-full sm:w-auto justify-start"
             >
               Record New Visit
             </Button>
@@ -228,11 +229,11 @@ const PatientDetails = () => {
 
             {/* Show "View All Visits" button if there are more than 3 visits */}
             {visits.length > 3 && (
-              <div className="pt-4">
+              <div className="pt-4 text-center">
                 <Button
                   variant="outline"
                   size="medium"
-                  className="w-full"
+                  className="justify-center"
                   onClick={() => navigate(`/patients/${id}/visits`)}
                 >
                   View All {visits.length} Visits
@@ -248,6 +249,7 @@ const PatientDetails = () => {
               variant="primary"
               size="medium"
               onClick={() => navigate(`/patients/${id}/visits/new`)}
+              className="w-full sm:w-auto justify-start"
             >
               Record First Visit
             </Button>
@@ -288,7 +290,7 @@ const InfoRow = ({ icon: Icon, label, value }) => (
     {Icon && <Icon className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" />}
     <div className="flex-1 min-w-0">
       <p className="text-sm font-medium text-gray-500">{label}</p>
-      <p className="text-sm text-gray-900 mt-1">{value || '—'}</p>
+      <p className="text-sm text-gray-900 mt-1 break-words">{value || '—'}</p>
     </div>
   </div>
 );
@@ -324,10 +326,10 @@ const VisitPreviewItem = ({ visit, onView }) => {
 
   return (
     <div className="border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-colors duration-150">
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
         <div className="flex-1">
-          <div className="flex items-center gap-3 mb-2">
-            <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${getVisitTypeColor(visit.type)}`}>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+            <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${getVisitTypeColor(visit.type)} self-start`}>
               {visit.type || '—'}
             </span>
             <span className="text-sm text-gray-500">
@@ -346,11 +348,12 @@ const VisitPreviewItem = ({ visit, onView }) => {
           )}
         </div>
 
-        <div className="ml-4 flex-shrink-0">
+        <div className="flex-shrink-0 self-end sm:self-auto">
           <Button
             variant="outline"
             size="small"
             onClick={onView}
+            className="w-full sm:w-auto justify-start"
           >
             View
           </Button>
