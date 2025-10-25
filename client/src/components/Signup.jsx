@@ -103,7 +103,7 @@ const Signup = () => {
             {/* Logo */}
             <div className="text-center mb-6">
                 <img
-                    src="../public/Logo.png" // replace with actual logo path
+                    src="/Logo.png" // replace with actual logo path
                     alt="Logo"
                     className="mx-auto"
                 />

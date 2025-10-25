@@ -13,10 +13,10 @@ const Modal = ({
     closeOnOverlayClick = true
 }) => {
     const sizes = {
-        sm: 'max-w-md',
-        md: 'max-w-lg',
-        lg: 'max-w-2xl',
-        xl: 'max-w-3xl',
+        sm: 'w-11/12 max-w-md',
+        md: 'w-11/12 max-w-lg',
+        lg: 'w-11/12 max-w-2xl',
+        xl: 'w-11/12 max-w-3xl',
     }
 
     useEffect(() => {
@@ -30,7 +30,7 @@ const Modal = ({
 
     useEffect(() => {
         const handleEscape = (e) => {
-            if (e.target === 'Escape' && isOpen) {
+            if (e.key === 'Escape' && isOpen) {
                 onClose()
             }
         }
@@ -38,40 +38,46 @@ const Modal = ({
         return () => { document.removeEventListener("keydown", handleEscape) };
     }, [isOpen, onClose])
 
+    const handleOverlayClick = (e) => {
+        if (e.target === e.currentTarget && closeOnOverlayClick) {
+            onClose();
+        }
+    }
+
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 transition-opacity">
-            <div className="flex min-h-screen items-center justify-center p-4">
-                {/* Backdrop */}
-                <div
-                    className="fixed inset-0 bg-black opacity-30 transition-opacity"
-                    // onClick={closeOnOverlayClick ? onClose : null}
-                />
-                {/* Modal Content */}
-                <div className={`relative bg-white rounded-lg shadow-xl w-full ${sizes[size]} transform transition-all duration-300`}>
-                    {/* Header */}
-                    {(title && showCloseButton) && (
-                        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-                            {title && (
-                                <Title
-                                    title={title}
-                                    Icon={Icon}
-                                    active="true"
-                                />
-                            )}
-                            {showCloseButton && (
-                                <X
-                                    onClick={() => onClose()}
-                                    className="bg-red-500 hover:bg-red-600 rounded-full text-white p-1 transition-all duration-150 cursor-pointer"
-                                />
-                            )}
-                        </div>
-                    )}
-                    {/* Body */}
-                    <div className='p-6 text-left'>
-                        {children}
+        <div
+            className="fixed inset-0 bg-black bg-opacity-50 transition-opacity z-50 flex items-center justify-center p-4"
+            onClick={handleOverlayClick}
+        >
+            {/* Modal Content */}
+            <div className={`relative bg-white rounded-lg shadow-xl transform transition-all duration-300 max-h-[90vh] overflow-y-auto ${sizes[size]}`}>
+                {/* Header */}
+                {(title || showCloseButton) && (
+                    <div className="flex items-center justify-between p-4 md:p-6 border-b border-gray-200 sticky top-0 bg-white z-10">
+                        {title && (
+                            <Title
+                                title={title}
+                                Icon={Icon}
+                                active="true"
+                                className="text-lg md:text-xl"
+                            />
+                        )}
+                        {showCloseButton && (
+                            <button
+                                onClick={onClose}
+                                className="flex-shrink-0 ml-4 p-1 rounded-full hover:bg-gray-100 transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                aria-label="Close modal"
+                            >
+                                <X className="w-5 h-5 md:w-6 md:h-6 text-gray-600" />
+                            </button>
+                        )}
                     </div>
+                )}
+                {/* Body */}
+                <div className='p-4 md:p-6 text-left'>
+                    {children}
                 </div>
             </div>
         </div>
