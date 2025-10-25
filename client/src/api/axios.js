@@ -1,6 +1,6 @@
 import axios from "axios";
 const api = axios.create({
-    baseURL: "https://pm-system-flax.vercel.app", // your backend API base
+    baseURL: "https://pm-system-flax.vercel.app/api", // your backend API base
 });
 // Attach JWT token automatically
 api.interceptors.request.use((config) => {
