@@ -8,15 +8,6 @@ import { configureCloudinary } from './utils/uploadImage.js'; // Import the conf
 // Load env variables FIRST
 dotenv.config();
 
-// Configure Cloudinary AFTER environment variables are loaded
-try {
-    configureCloudinary();
-    console.log('Cloudinary configuration completed successfully');
-} catch (error) {
-    console.error('Cloudinary configuration failed:', error.message);
-    console.log('Image uploads will use fallback avatars');
-}
-
 // create server
 const app = express();
 const PORT = process.env.PORT || 3000;
