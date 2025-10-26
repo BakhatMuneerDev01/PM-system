@@ -11,7 +11,7 @@ const Profile = () => {
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [deleteConfirmation, setDeleteConfirmation] = useState('');
 
-    const { user, update } = useAuth();
+    const { user, update, logout } = useAuth();
     const [formData, setFormData] = useState({
         username: '',
         email: '',
@@ -106,9 +106,6 @@ const Profile = () => {
         }
 
         try {
-            // Ensure Authorization header is explicitly sent for this DELETE request.
-            // This avoids relying on the interceptor (which sometimes may not run
-            // or may be mis-configured) and avoids token omission for DELETE calls.
             await api.delete('/auth/account', {
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem('token')}`
