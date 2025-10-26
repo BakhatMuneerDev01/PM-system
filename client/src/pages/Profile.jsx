@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { User, Mail, Phone, Lock, CreditCard, Camera, Save, Trash2, AlertTriangle } from 'lucide-react';
 import { Title, Input, Button, Modal } from '../components/ui/base';
 import CountrySelector from '../components/CountrySelector'
@@ -100,6 +101,7 @@ const Profile = () => {
 
     // Add delete function
     const handleDeleteAccount = async () => {
+        const navigate = useNavigate();
         if (deleteConfirmation !== 'DELETE') {
             toast.error('Please type "DELETE" to confirm account deletion');
             return;
@@ -114,7 +116,7 @@ const Profile = () => {
 
             toast.success('Account deleted successfully');
             logout();
-            navigate('/login');
+            navigate('/signup');
         } catch (error) {
             // Log richer diagnostics (status, data) to aid debugging
             console.error('Failed to delete account:', {
