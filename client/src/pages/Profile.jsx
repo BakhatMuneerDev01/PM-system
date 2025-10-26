@@ -44,38 +44,66 @@ const Profile = () => {
                 }
             });
 
-            // ✅ CRITICAL FIX: Initialize image preview from user data
-            if (user?.profileImage && isValidImageUrl(user.profileImage)) {
-                setImagePreview(user.profileImage);
-                console.log('🔄 Initial image preview set from user data:', user.profileImage);
-            } else {
-                setImagePreview('');
-            }
+            // ✅ CRITICAL FIX: Initialize image preview with better validation
+            updateImagePreviewFromUser(user);
         }
     }, [user]);
 
-    // ✅ NEW: Separate function to handle image preview updates
+
+    // ✅ NEW: Enhanced image preview update function
     const updateImagePreviewFromUser = (userData) => {
         if (userData?.profileImage && isValidImageUrl(userData.profileImage)) {
             setImagePreview(userData.profileImage);
-            console.log('🔄 Image preview updated from user data:', userData.profileImage);
+            setImageLoadError(false);
+            console.log('🔄 Image preview set from user data:', userData.profileImage);
         } else {
             setImagePreview('');
+            setImageLoadError(false);
             console.log('🔄 Image preview cleared - no valid user image');
         }
     };
 
-    // ✅ FIX: Validate image URLs before using them
+    // ✅ FIX: Enhanced image URL validation
     const isValidImageUrl = (url) => {
         if (!url) return false;
-        // Don't treat ui-avatars as invalid - they're valid fallbacks
+
+        // ✅ CRITICAL: Check for placeholder Cloudinary URLs
+        if (url.includes('your_cloud_name') || url.includes('cloudinary.com/your_cloud_name')) {
+            console.warn('❌ Invalid Cloudinary URL detected:', url);
+            return false;
+        }
+
+        // Allow ui-avatars.com URLs
         if (url.includes('ui-avatars.com')) return true;
+
+        // Allow valid Cloudinary URLs
+        if (url.includes('res.cloudinary.com')) {
+            try {
+                const urlObj = new URL(url);
+                const pathParts = urlObj.pathname.split('/');
+                // Check if it has proper Cloudinary structure
+                return pathParts.length >= 4 && pathParts[1] === 'image' && pathParts[2] === 'upload';
+            } catch {
+                return false;
+            }
+        }
+
+        // General URL validation
         try {
             const urlObj = new URL(url);
             return urlObj.protocol === 'http:' || urlObj.protocol === 'https:';
         } catch {
             return false;
         }
+    };
+
+    // ✅ FIX: Enhanced image error handler
+    const handleImageError = (imageUrl) => {
+        console.warn('❌ Image failed to load:', imageUrl);
+        setImageLoadError(true);
+
+        // Don't clear imagePreview entirely, just mark it as having load error
+        // This allows retries if it was a temporary network issue
     };
 
     const handleInputChange = (e) => {
@@ -132,10 +160,10 @@ const Profile = () => {
         });
 
         setProfileImage(file);
+        setImageLoadError(false); // Reset error state for new image
         const preview = URL.createObjectURL(file);
         setImagePreview(preview);
     };
-
     // ✅ FIX: Complete submit handler rewrite with proper file handling
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -163,12 +191,6 @@ const Profile = () => {
             if (profileImage instanceof File) {
                 submitData.append('profileImage', profileImage);
                 console.log('📤 Uploading new profile image:', profileImage.name);
-
-                // ✅ Verify the file is properly added to FormData
-                console.log('📋 FormData entries:');
-                for (let pair of submitData.entries()) {
-                    console.log('  ', pair[0], ':', pair[1] instanceof File ? `File: ${pair[1].name}` : pair[1]);
-                }
             } else {
                 console.log('ℹ️ No new image selected - keeping existing');
             }
@@ -190,7 +212,11 @@ const Profile = () => {
             // ✅ CRITICAL FIX: Update image preview with the actual response from backend
             if (response.profileImage && isValidImageUrl(response.profileImage)) {
                 setImagePreview(response.profileImage);
+                setImageLoadError(false);
                 console.log('🔄 Image preview updated from response:', response.profileImage);
+            } else {
+                setImagePreview('');
+                setImageLoadError(false);
             }
 
             toast.success('Profile updated successfully');
@@ -205,9 +231,7 @@ const Profile = () => {
             toast.error(errorMessage);
 
             // ✅ Revert image preview to current user state on error
-            if (user?.profileImage && isValidImageUrl(user.profileImage)) {
-                setImagePreview(user.profileImage);
-            }
+            updateImagePreviewFromUser(user);
         } finally {
             setLoading(false);
         }
@@ -216,12 +240,9 @@ const Profile = () => {
     // ✅ FIX: Updated remove image handler
     const handleRemoveImage = () => {
         setProfileImage(null);
+        setImageLoadError(false);
         // Revert to user's existing image
-        if (user?.profileImage && isValidImageUrl(user.profileImage)) {
-            setImagePreview(user.profileImage);
-        } else {
-            setImagePreview('');
-        }
+        updateImagePreviewFromUser(user);
         toast.info('Image change cancelled');
     };
 
@@ -245,6 +266,16 @@ const Profile = () => {
         }
     };
 
+    // ✅ FIX: Generate fallback avatar based on username
+    const getFallbackAvatar = () => {
+        const initial = user?.username?.charAt(0).toUpperCase() || 'U';
+        return (
+            <div className="w-full h-full flex items-center justify-center bg-blue-500 text-white text-2xl font-bold">
+                {initial}
+            </div>
+        );
+    };
+
 
     return (
         <div className="max-w-4xl mx-auto p-6 space-y-8">
@@ -265,19 +296,16 @@ const Profile = () => {
                 <div className="flex items-center space-x-6">
                     <div className="relative">
                         <div className="w-24 h-24 rounded-full bg-blue-500 flex items-center justify-center text-white text-2xl font-bold relative overflow-hidden border-2 border-gray-300">
-                            {imagePreview && isValidImageUrl(imagePreview) ? (
+                            {imagePreview && !imageLoadError ? (
                                 <img
                                     src={imagePreview}
                                     alt="Profile"
                                     className="w-full h-full object-cover"
-                                    onError={(e) => {
-                                        console.warn('❌ Image failed to load:', imagePreview);
-                                        e.target.style.display = 'none';
-                                        setImagePreview('');
-                                    }}
+                                    onError={() => handleImageError(imagePreview)}
+                                    onLoad={() => setImageLoadError(false)}
                                 />
                             ) : (
-                                <span>{user?.username?.charAt(0).toUpperCase() || 'U'}</span>
+                                getFallbackAvatar()
                             )}
                         </div>
                         <label
@@ -306,6 +334,11 @@ const Profile = () => {
                             >
                                 Cancel upload
                             </button>
+                        )}
+                        {imageLoadError && (
+                            <p className="text-sm text-orange-600 mt-1">
+                                Could not load profile image - showing fallback
+                            </p>
                         )}
                     </div>
                 </div>
