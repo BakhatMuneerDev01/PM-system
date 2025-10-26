@@ -51,12 +51,11 @@ export const AuthProvider = ({ children }) => {
                 profileImage: res.data.profileImage
             });
 
-            // ✅ CRITICAL: Properly merge user data
+            // ✅ FIX: Use the response data as the source of truth
             const updatedUserData = {
-                ...user,
-                ...res.data,
-                // Ensure profileImage is handled correctly
-                profileImage: res.data.profileImage || user?.profileImage || null
+                ...res.data, // ✅ Use response data first
+                // Only fall back to existing user data for fields not in response
+                paymentDetails: res.data.paymentDetails || user?.paymentDetails || {}
             };
 
             setUser(updatedUserData);

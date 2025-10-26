@@ -127,50 +127,76 @@ const updateUserProfile = async (req, res) => {
         user.email = req.body.email || user.email;
         user.phoneNumber = req.body.phoneNumber || user.phoneNumber;
 
-        // ✅ FIX: Enhanced profile image handling with better validation
-        if (req.file) {
+        // ✅ CRITICAL FIX: Enhanced profile image handling with proper file detection
+        console.log('🔄 Profile update - File detected:', !!req.file);
+        console.log('🔄 Profile update - File details:', req.file ? {
+            originalname: req.file.originalname,
+            size: req.file.size,
+            mimetype: req.file.mimetype
+        } : 'No file');
+
+        if (req.file && req.file.buffer) {
             try {
-                console.log('📤 Starting Cloudinary upload...');
-                console.log('File buffer size:', req.file.buffer?.length || 0);
+                console.log('📤 Starting Cloudinary upload for profile update...');
+                console.log('File buffer size:', req.file.buffer.length);
 
                 const uploadedUrl = await uploadToCloudinary(req.file.buffer, 'profiles');
 
                 // ✅ CRITICAL: Only update if we got a valid Cloudinary URL
                 if (uploadedUrl && uploadedUrl.startsWith('https://res.cloudinary.com/')) {
                     user.profileImage = uploadedUrl;
-                    console.log('✅ Cloudinary upload successful:', uploadedUrl);
+                    console.log('✅ Cloudinary upload successful for profile update:', uploadedUrl);
                 } else {
                     console.warn('⚠️ Invalid Cloudinary URL received:', uploadedUrl);
                     // Preserve existing profile image - don't update
                     console.log('ℹ️ Keeping existing profile image due to invalid URL');
                 }
             } catch (cloudinaryError) {
-                console.error('❌ Cloudinary upload failed:', cloudinaryError.message);
+                console.error('❌ Cloudinary upload failed during profile update:', cloudinaryError.message);
                 // Don't update profileImage - keep existing one
                 // Don't return error - allow other fields to update
                 console.log('ℹ️ Profile image unchanged due to upload error');
             }
+        } else {
+            console.log('ℹ️ No new profile image file provided - keeping existing image');
+            // ✅ CRITICAL: If no file, preserve existing profileImage
+            // Don't modify user.profileImage at all
         }
-        // ✅ If no req.file, don't touch user.profileImage at all
 
-        // ... paymentDetails and password logic remain the same ...
+        // Handle payment details if provided
+        if (req.body.paymentDetails) {
+            try {
+                const paymentDetails = JSON.parse(req.body.paymentDetails);
+                user.paymentDetails = {
+                    ...user.paymentDetails,
+                    ...paymentDetails
+                };
+            } catch (parseError) {
+                console.warn('⚠️ Failed to parse paymentDetails:', parseError.message);
+            }
+        }
+
+        // Handle password change if provided
+        if (req.body.password && req.body.password.trim()) {
+            user.password = req.body.password;
+        }
 
         // ✅ Save and validate
         const updatedUser = await user.save();
 
-        // ✅ CRITICAL: Ensure consistent profileImage response
+        // ✅ CRITICAL: Ensure consistent profileImage response with actual database value
         const responseData = {
             _id: updatedUser._id,
             username: updatedUser.username,
             email: updatedUser.email,
             role: updatedUser.role,
             phoneNumber: updatedUser.phoneNumber,
-            profileImage: updatedUser.profileImage || null, // ✅ Always return profileImage even if null
+            profileImage: updatedUser.profileImage, // ✅ Always return the actual value from DB
             paymentDetails: updatedUser.paymentDetails || {},
             token: generateToken(updatedUser._id),
         };
 
-        console.log('✅ Update response prepared:', {
+        console.log('✅ Profile update response prepared:', {
             username: responseData.username,
             profileImage: responseData.profileImage ? 'Present' : 'Null/Empty',
             profileImageValue: responseData.profileImage // Log actual value for debugging
@@ -180,7 +206,14 @@ const updateUserProfile = async (req, res) => {
 
     } catch (error) {
         console.error('❌ Update profile error:', error);
-        // ... error handling remains the same ...
+        if (error.name === 'ValidationError') {
+            const messages = Object.values(error.errors).map(val => val.message);
+            return res.status(400).json({ message: messages.join(', ') });
+        }
+        if (error.code === 11000) {
+            return res.status(400).json({ message: 'Username or email already exists' });
+        }
+        res.status(500).json({ message: 'Server error updating profile' });
     }
 };
 /**

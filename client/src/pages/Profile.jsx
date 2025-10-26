@@ -27,7 +27,7 @@ const Profile = () => {
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [deleteConfirmation, setDeleteConfirmation] = useState('');
 
-    // ✅ FIX: Improved useEffect with proper dependencies
+    // ✅ FIX: Improved useEffect with proper image preview initialization
     useEffect(() => {
         if (user) {
             setFormData({
@@ -44,10 +44,15 @@ const Profile = () => {
                 }
             });
 
-            // ✅ CRITICAL FIX: Update image preview whenever user data changes
-            updateImagePreviewFromUser(user);
+            // ✅ CRITICAL FIX: Initialize image preview from user data
+            if (user?.profileImage && isValidImageUrl(user.profileImage)) {
+                setImagePreview(user.profileImage);
+                console.log('🔄 Initial image preview set from user data:', user.profileImage);
+            } else {
+                setImagePreview('');
+            }
         }
-    }, [user]); // ✅ Now watches entire user object, not just _id
+    }, [user]);
 
     // ✅ NEW: Separate function to handle image preview updates
     const updateImagePreviewFromUser = (userData) => {
@@ -63,6 +68,8 @@ const Profile = () => {
     // ✅ FIX: Validate image URLs before using them
     const isValidImageUrl = (url) => {
         if (!url) return false;
+        // Don't treat ui-avatars as invalid - they're valid fallbacks
+        if (url.includes('ui-avatars.com')) return true;
         try {
             const urlObj = new URL(url);
             return urlObj.protocol === 'http:' || urlObj.protocol === 'https:';
@@ -129,7 +136,7 @@ const Profile = () => {
         setImagePreview(preview);
     };
 
-    // ✅ FIX: Complete submit handler rewrite with better state management
+    // ✅ FIX: Complete submit handler rewrite with proper file handling
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
@@ -152,10 +159,16 @@ const Profile = () => {
             };
             submitData.append('paymentDetails', JSON.stringify(paymentDetails));
 
-            // ✅ Only append image if a NEW file was selected
+            // ✅ CRITICAL FIX: Ensure file is properly appended to FormData
             if (profileImage instanceof File) {
                 submitData.append('profileImage', profileImage);
                 console.log('📤 Uploading new profile image:', profileImage.name);
+
+                // ✅ Verify the file is properly added to FormData
+                console.log('📋 FormData entries:');
+                for (let pair of submitData.entries()) {
+                    console.log('  ', pair[0], ':', pair[1] instanceof File ? `File: ${pair[1].name}` : pair[1]);
+                }
             } else {
                 console.log('ℹ️ No new image selected - keeping existing');
             }
@@ -174,9 +187,11 @@ const Profile = () => {
                 profileImage: response.profileImage
             });
 
-            // ✅ CRITICAL FIX: Let the useEffect handle image preview updates from the updated user context
-            // The AuthContext update will trigger a user state change, which will trigger our useEffect
-            // This ensures we always use the authoritative image URL from the context
+            // ✅ CRITICAL FIX: Update image preview with the actual response from backend
+            if (response.profileImage && isValidImageUrl(response.profileImage)) {
+                setImagePreview(response.profileImage);
+                console.log('🔄 Image preview updated from response:', response.profileImage);
+            }
 
             toast.success('Profile updated successfully');
 
@@ -190,7 +205,9 @@ const Profile = () => {
             toast.error(errorMessage);
 
             // ✅ Revert image preview to current user state on error
-            updateImagePreviewFromUser(user);
+            if (user?.profileImage && isValidImageUrl(user.profileImage)) {
+                setImagePreview(user.profileImage);
+            }
         } finally {
             setLoading(false);
         }
@@ -200,7 +217,11 @@ const Profile = () => {
     const handleRemoveImage = () => {
         setProfileImage(null);
         // Revert to user's existing image
-        updateImagePreviewFromUser(user);
+        if (user?.profileImage && isValidImageUrl(user.profileImage)) {
+            setImagePreview(user.profileImage);
+        } else {
+            setImagePreview('');
+        }
         toast.info('Image change cancelled');
     };
 
@@ -223,6 +244,7 @@ const Profile = () => {
             toast.error(error.response?.data?.message || 'Failed to delete account');
         }
     };
+
 
     return (
         <div className="max-w-4xl mx-auto p-6 space-y-8">
