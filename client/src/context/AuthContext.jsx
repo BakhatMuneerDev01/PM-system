@@ -42,21 +42,29 @@ export const AuthProvider = ({ children }) => {
     // Update Profile
     const update = async (formData) => {
         try {
+            console.log('🔄 AuthContext: Sending update request...');
             const res = await updateProfile(formData);
 
-            // ✅ FIX: Ensure we update user state with the complete response
+            console.log('✅ AuthContext: Response received:', {
+                username: res.data.username,
+                hasProfileImage: !!res.data.profileImage,
+                profileImage: res.data.profileImage
+            });
+
+            // ✅ CRITICAL: Properly merge user data
             const updatedUserData = {
-                ...user, // Preserve existing data
-                ...res.data, // Overlay with new data
-                profileImage: res.data.profileImage || user.profileImage // ✅ Fallback to existing
+                ...user,
+                ...res.data,
+                // Ensure profileImage is handled correctly
+                profileImage: res.data.profileImage || user?.profileImage || null
             };
 
             setUser(updatedUserData);
-            console.log('User state updated with profileImage:', updatedUserData.profileImage);
+            console.log('✅ AuthContext: User state updated');
 
             return res.data;
         } catch (error) {
-            console.error('Update error in AuthContext:', error);
+            console.error('❌ AuthContext: Update failed:', error);
             throw error;
         }
     };

@@ -127,53 +127,58 @@ const updateUserProfile = async (req, res) => {
         user.email = req.body.email || user.email;
         user.phoneNumber = req.body.phoneNumber || user.phoneNumber;
 
-        // ✅ FIX: Preserve existing profile image if no new file uploaded
-        let shouldUpdateImage = false;
-        let newImageUrl = user.profileImage; // Start with existing image
-
-        // Handle profile image upload
+        // ✅ FIX: Handle profile image with proper validation
         if (req.file) {
             try {
-                console.log('Attempting to upload image to Cloudinary...');
+                console.log('📤 Starting Cloudinary upload...');
+                console.log('File buffer size:', req.file.buffer?.length || 0);
+
                 const uploadedUrl = await uploadToCloudinary(req.file.buffer, 'profiles');
 
-                if (uploadedUrl) {
-                    newImageUrl = uploadedUrl;
-                    shouldUpdateImage = true;
+                // ✅ CRITICAL: Only update if we got a valid Cloudinary URL
+                if (uploadedUrl && uploadedUrl.startsWith('https://res.cloudinary.com/')) {
+                    user.profileImage = uploadedUrl;
                     console.log('✅ Cloudinary upload successful:', uploadedUrl);
                 } else {
-                    console.warn('⚠️ Cloudinary returned no URL, keeping existing image');
+                    console.warn('⚠️ Invalid Cloudinary URL received:', uploadedUrl);
+                    console.log('ℹ️ Keeping existing profile image:', user.profileImage);
+                    // Don't update profileImage - keep existing one
                 }
             } catch (cloudinaryError) {
                 console.error('❌ Cloudinary upload failed:', cloudinaryError.message);
-                // Don't change the image - keep existing one
-                console.log('Keeping existing profile image due to upload failure');
+                console.log('ℹ️ Keeping existing profile image due to upload error');
+                // Don't update profileImage - keep existing one
+                // Don't return error - allow other fields to update
             }
         }
+        // ✅ If no req.file, don't touch user.profileImage at all
 
-        // ✅ FIX: Always set profileImage (either new or existing)
-        user.profileImage = newImageUrl;
-
-        // ✅ FIX: Properly handle paymentDetails with explicit country preservation
+        // ✅ FIX: Handle paymentDetails with proper validation
         if (req.body.paymentDetails) {
-            let paymentDetails;
             try {
-                paymentDetails = typeof req.body.paymentDetails === 'string'
+                const paymentDetails = typeof req.body.paymentDetails === 'string'
                     ? JSON.parse(req.body.paymentDetails)
                     : req.body.paymentDetails;
 
-                // Explicitly preserve all fields including country
+                // ✅ Preserve existing values if new ones aren't provided
                 user.paymentDetails = {
-                    enableAutoPayout: paymentDetails.enableAutoPayout ?? user.paymentDetails?.enableAutoPayout ?? false,
-                    notifyNewPayments: paymentDetails.notifyNewPayments ?? user.paymentDetails?.notifyNewPayments ?? false,
-                    cardHolderName: paymentDetails.cardHolderName ?? user.paymentDetails?.cardHolderName ?? '',
-                    creditCardNumber: paymentDetails.creditCardNumber ?? user.paymentDetails?.creditCardNumber ?? '',
-                    country: paymentDetails.country ?? user.paymentDetails?.country ?? '' // ✅ Explicit country preservation
+                    enableAutoPayout: paymentDetails.enableAutoPayout !== undefined
+                        ? paymentDetails.enableAutoPayout
+                        : (user.paymentDetails?.enableAutoPayout || false),
+                    notifyNewPayments: paymentDetails.notifyNewPayments !== undefined
+                        ? paymentDetails.notifyNewPayments
+                        : (user.paymentDetails?.notifyNewPayments || false),
+                    cardHolderName: paymentDetails.cardHolderName || user.paymentDetails?.cardHolderName || '',
+                    creditCardNumber: paymentDetails.creditCardNumber || user.paymentDetails?.creditCardNumber || '',
+                    country: paymentDetails.country || user.paymentDetails?.country || ''
                 };
 
-                console.log('✅ Payment details updated with country:', user.paymentDetails.country);
+                console.log('✅ Payment details preserved:', {
+                    country: user.paymentDetails.country,
+                    cardHolder: user.paymentDetails.cardHolderName ? 'Set' : 'Not set'
+                });
             } catch (parseError) {
-                console.error('Payment details parse error:', parseError);
+                console.error('❌ Payment details parse error:', parseError);
                 return res.status(400).json({ message: 'Invalid payment details format' });
             }
         }
@@ -186,25 +191,31 @@ const updateUserProfile = async (req, res) => {
             user.password = req.body.password;
         }
 
+        // ✅ Save and validate
         const updatedUser = await user.save();
 
-        // ✅ FIX: Ensure profileImage is always in response
+        // ✅ CRITICAL: Ensure we return a valid profileImage URL or null
         const responseData = {
             _id: updatedUser._id,
             username: updatedUser.username,
             email: updatedUser.email,
             role: updatedUser.role,
             phoneNumber: updatedUser.phoneNumber,
-            profileImage: updatedUser.profileImage, // ✅ Always include this
-            paymentDetails: updatedUser.paymentDetails,
+            profileImage: updatedUser.profileImage || null, // ✅ Return null if empty
+            paymentDetails: updatedUser.paymentDetails || {},
             token: generateToken(updatedUser._id),
         };
 
-        console.log('✅ Profile update successful. Returning profileImage:', responseData.profileImage);
+        console.log('✅ Update response prepared:', {
+            username: responseData.username,
+            profileImage: responseData.profileImage ? 'Present' : 'Null',
+            paymentDetails: responseData.paymentDetails.country ? 'Complete' : 'Partial'
+        });
+
         res.json(responseData);
 
     } catch (error) {
-        console.error('Update profile error:', error);
+        console.error('❌ Update profile error:', error);
 
         if (error.code === 11000) {
             const field = Object.keys(error.keyPattern)[0];

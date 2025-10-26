@@ -1,17 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { User, Mail, Phone, Lock, CreditCard, Camera, Save, Trash2, AlertTriangle } from 'lucide-react';
 import { Title, Input, Button, Modal } from '../components/ui/base';
-import CountrySelector from '../components/CountrySelector'
-import StripePaymentForm from '../components/PaymentForm';;
+import CountrySelector from '../components/CountrySelector';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 import api from '../api/axios';
 
 const Profile = () => {
-    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-    const [deleteConfirmation, setDeleteConfirmation] = useState('');
-
     const { user, update, logout } = useAuth();
     const [formData, setFormData] = useState({
         username: '',
@@ -29,8 +24,10 @@ const Profile = () => {
     const [loading, setLoading] = useState(false);
     const [profileImage, setProfileImage] = useState(null);
     const [imagePreview, setImagePreview] = useState('');
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [deleteConfirmation, setDeleteConfirmation] = useState('');
 
-    // Better state initialization
+    // ✅ FIX: Initialize state only once with user data
     useEffect(() => {
         if (user) {
             setFormData({
@@ -46,12 +43,26 @@ const Profile = () => {
                     country: user.paymentDetails?.country || ''
                 }
             });
-            // Don't reset imagePreview if user has an image
-            if (user.profileImage && !imagePreview) {
+
+            // ✅ Set image preview only if user has a valid image
+            if (user.profileImage && user.profileImage.startsWith('http')) {
                 setImagePreview(user.profileImage);
+            } else {
+                setImagePreview(''); // Clear invalid URLs
             }
         }
-    }, [user]); // Remove imagePreview from dependencies
+    }, [user?._id]); // ✅ Only re-run if user ID changes
+
+    // ✅ FIX: Validate image URLs before using them
+    const isValidImageUrl = (url) => {
+        if (!url) return false;
+        try {
+            const urlObj = new URL(url);
+            return urlObj.protocol === 'http:' || urlObj.protocol === 'https:';
+        } catch {
+            return false;
+        }
+    };
 
     const handleInputChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -83,35 +94,133 @@ const Profile = () => {
         }));
     };
 
+    // ✅ FIX: Enhanced image change handler with validation
     const handleImageChange = (e) => {
         const file = e.target.files[0];
-        if (file) {
-            // Validate file type
-            if (!file.type.startsWith('image/')) {
-                toast.error('Please select an image file');
-                return;
+        if (!file) return;
+
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+            toast.error('Please select an image file');
+            return;
+        }
+
+        // Validate file size (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            toast.error('Image size should be less than 5MB');
+            return;
+        }
+
+        console.log('📸 Image selected:', {
+            name: file.name,
+            size: file.size,
+            type: file.type
+        });
+
+        setProfileImage(file);
+        const preview = URL.createObjectURL(file);
+        setImagePreview(preview);
+
+        // Cleanup old object URL to prevent memory leaks
+        return () => URL.revokeObjectURL(preview);
+    };
+
+    // ✅ FIX: Complete submit handler rewrite
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+
+        try {
+            const submitData = new FormData();
+
+            // Add basic fields
+            submitData.append('username', formData.username);
+            submitData.append('email', formData.email);
+            submitData.append('phoneNumber', formData.phoneNumber);
+
+            // Add payment details
+            const paymentDetails = {
+                enableAutoPayout: formData.paymentDetails.enableAutoPayout,
+                notifyNewPayments: formData.paymentDetails.notifyNewPayments,
+                cardHolderName: formData.paymentDetails.cardHolderName,
+                creditCardNumber: formData.paymentDetails.creditCardNumber,
+                country: formData.paymentDetails.country
+            };
+            submitData.append('paymentDetails', JSON.stringify(paymentDetails));
+
+            // ✅ Only append image if a NEW file was selected
+            if (profileImage instanceof File) {
+                submitData.append('profileImage', profileImage);
+                console.log('📤 Uploading new profile image:', profileImage.name);
+            } else {
+                console.log('ℹ️ No new image selected - keeping existing');
             }
 
-            // Validate file size (max 5MB)
-            if (file.size > 5 * 1024 * 1024) {
-                toast.error('Image size should be less than 5MB');
-                return;
+            // Add password only if changed
+            if (formData.password && formData.password.trim()) {
+                submitData.append('password', formData.password);
             }
 
-            setProfileImage(file);
-            const newPreview = URL.createObjectURL(file);
-            setImagePreview(newPreview);
+            // ✅ Call update and handle response
+            console.log('🔄 Sending update request...');
+            const response = await update(submitData);
+            console.log('✅ Update response received:', response);
 
-            // Cleanup old preview URL to prevent memory leaks
-            return () => URL.revokeObjectURL(newPreview);
+            // ✅ Update local state with response data
+            if (response) {
+                // Update image preview with valid URL from response
+                if (response.profileImage && isValidImageUrl(response.profileImage)) {
+                    setImagePreview(response.profileImage);
+                    console.log('✅ Image preview updated:', response.profileImage);
+                } else if (user?.profileImage && isValidImageUrl(user.profileImage)) {
+                    // Fallback to existing user image
+                    setImagePreview(user.profileImage);
+                    console.log('ℹ️ Using existing image:', user.profileImage);
+                } else {
+                    setImagePreview('');
+                    console.log('⚠️ No valid image URL available');
+                }
+            }
+
+            toast.success('Profile updated successfully');
+
+            // ✅ Reset only the temporary states
+            setFormData(prev => ({ ...prev, password: '' }));
+            setProfileImage(null); // Clear file input
+
+        } catch (error) {
+            console.error('❌ Profile update error:', error);
+            const errorMessage = error.response?.data?.message || error.message || 'Failed to update profile';
+            toast.error(errorMessage);
+
+            // ✅ Revert to user's existing image on error
+            if (user?.profileImage && isValidImageUrl(user.profileImage)) {
+                setImagePreview(user.profileImage);
+            } else {
+                setImagePreview('');
+            }
+        } finally {
+            setLoading(false);
         }
     };
 
-    // Add delete function
+    // ✅ FIX: Updated remove image handler
+    const handleRemoveImage = () => {
+        setProfileImage(null);
+
+        // Revert to user's existing image if valid
+        if (user?.profileImage && isValidImageUrl(user.profileImage)) {
+            setImagePreview(user.profileImage);
+            toast.info('Image change cancelled');
+        } else {
+            setImagePreview('');
+            toast.info('Image removed');
+        }
+    };
+
     const handleDeleteAccount = async () => {
-        const navigate = useNavigate();
         if (deleteConfirmation !== 'DELETE') {
-            toast.error('Please type "DELETE" to confirm account deletion');
+            toast.error('Please type "DELETE" to confirm');
             return;
         }
 
@@ -121,112 +230,13 @@ const Profile = () => {
                     Authorization: `Bearer ${localStorage.getItem('token')}`
                 }
             });
-
             toast.success('Account deleted successfully');
             logout();
-            navigate('/signup');
         } catch (error) {
-            // Log richer diagnostics (status, data) to aid debugging
-            console.error('Failed to delete account:', {
-                message: error.message,
-                status: error.response?.status,
-                data: error.response?.data
-            });
-
-            // Prefer backend-provided message, fall back to axios/network message, then to generic.
-            const serverMessage = error.response?.data?.message;
-            const networkMessage = error.message;
-            toast.error(serverMessage || networkMessage || 'Failed to delete account');
-        }
-
-    };
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setLoading(true);
-
-        try {
-            const submitData = new FormData();
-            submitData.append('username', formData.username);
-            submitData.append('email', formData.email);
-            submitData.append('phoneNumber', formData.phoneNumber);
-
-            // Include country explicitly
-            const paymentDetails = {
-                enableAutoPayout: formData.paymentDetails.enableAutoPayout,
-                notifyNewPayments: formData.paymentDetails.notifyNewPayments,
-                cardHolderName: formData.paymentDetails.cardHolderName,
-                creditCardNumber: formData.paymentDetails.creditCardNumber,
-                country: formData.paymentDetails.country // Ensure country is included
-            };
-            submitData.append('paymentDetails', JSON.stringify(paymentDetails));
-
-            // Only append new image file if one was selected
-            if (profileImage) {
-                submitData.append('profileImage', profileImage);
-                console.log('📤 Uploading new profile image');
-            } else {
-                console.log('ℹ️ No new image - keeping existing profile picture');
-            }
-
-            if (formData.password) {
-                submitData.append('password', formData.password);
-            }
-
-            //  Update with proper response handling
-            const updatedData = await update(submitData);
-
-            //  Update preview with response data
-            if (updatedData.profileImage) {
-                setImagePreview(updatedData.profileImage);
-            }
-
-            toast.success('Profile updated successfully');
-            setFormData(prev => ({ ...prev, password: '' }));
-            setProfileImage(null); // Clear file input only after successful update
-        } catch (error) {
-            console.error('Profile update error:', error);
-            toast.error(error.response?.data?.message || 'Failed to update profile');
-
-            //  Revert preview on error
-            if (user?.profileImage) {
-                setImagePreview(user.profileImage);
-            }
-        } finally {
-            setLoading(false);
+            console.error('Delete account error:', error);
+            toast.error(error.response?.data?.message || 'Failed to delete account');
         }
     };
-
-    // Update the handleRemoveImage function
-    const handleRemoveImage = () => {
-        setProfileImage(null);
-        // ✅ Revert to user's existing image, not empty
-        setImagePreview(user?.profileImage || '');
-        toast.info('Image change cancelled. Click save to keep current picture.');
-    };
-
-    // FIX 6: Ensure useEffect properly syncs user.profileImage
-    useEffect(() => {
-        if (user) {
-            setFormData({
-                username: user.username || '',
-                email: user.email || '',
-                password: '',
-                phoneNumber: user.phoneNumber || '',
-                paymentDetails: {
-                    enableAutoPayout: user.paymentDetails?.enableAutoPayout || false,
-                    notifyNewPayments: user.paymentDetails?.notifyNewPayments || false,
-                    cardHolderName: user.paymentDetails?.cardHolderName || '',
-                    creditCardNumber: user.paymentDetails?.creditCardNumber || '',
-                    country: user.paymentDetails?.country || '' // FIX: Sync country
-                }
-            });
-            // CRITICAL FIX: Always sync imagePreview with user.profileImage
-            if (user.profileImage) {
-                setImagePreview(user.profileImage);
-            }
-        }
-    }, [user]); // Runs whenever user object updates from AuthContext
 
     return (
         <div className="max-w-4xl mx-auto p-6 space-y-8">
@@ -243,25 +253,29 @@ const Profile = () => {
             </p>
 
             <form onSubmit={handleSubmit} className="space-y-8">
-                {/* Profile Image Upload - FIXED */}
+                {/* Profile Image Upload - ✅ FIXED */}
                 <div className="flex items-center space-x-6">
                     <div className="relative">
                         <div className="w-24 h-24 rounded-full bg-blue-500 flex items-center justify-center text-white text-2xl font-bold relative overflow-hidden border-2 border-gray-300">
-                            {imagePreview ? (
+                            {imagePreview && isValidImageUrl(imagePreview) ? (
                                 <img
                                     src={imagePreview}
                                     alt="Profile"
                                     className="w-full h-full object-cover"
                                     onError={(e) => {
+                                        console.warn('❌ Image failed to load:', imagePreview);
                                         e.target.style.display = 'none';
+                                        setImagePreview('');
                                     }}
                                 />
-                            ) : null}
-                            {!imagePreview && (
+                            ) : (
                                 <span>{user?.username?.charAt(0).toUpperCase() || 'U'}</span>
                             )}
                         </div>
-                        <label htmlFor="profileImage" className="absolute bottom-0 right-0 bg-blue-500 rounded-full p-2 cursor-pointer hover:bg-blue-600 transition-colors shadow-lg">
+                        <label
+                            htmlFor="profileImage"
+                            className="absolute bottom-0 right-0 bg-blue-500 rounded-full p-2 cursor-pointer hover:bg-blue-600 transition-colors shadow-lg"
+                        >
                             <Camera className="w-4 h-4 text-white" />
                             <input
                                 id="profileImage"
@@ -276,19 +290,19 @@ const Profile = () => {
                     <div>
                         <p className="font-medium text-gray-900">Profile Photo</p>
                         <p className="text-sm text-gray-500">Click the camera icon to upload a new photo</p>
-                        {imagePreview && imagePreview !== user?.profileImage && (
+                        {profileImage && (
                             <button
                                 type="button"
                                 onClick={handleRemoveImage}
                                 className="text-sm text-red-600 hover:text-red-700 mt-1"
                             >
-                                Remove photo
+                                Cancel upload
                             </button>
                         )}
                     </div>
                 </div>
 
-                {/* Personal Information Section */}
+                {/* Rest of the form - Personal Information */}
                 <div className="bg-white rounded-lg border border-gray-200 p-6">
                     <h2 className="text-xl font-semibold text-gray-900 mb-6">Personal Information</h2>
 
@@ -316,7 +330,7 @@ const Profile = () => {
                             label="Password"
                             name="password"
                             type="password"
-                            placeholder="Enter new password (leave blank to keep current)"
+                            placeholder="Leave blank to keep current"
                             value={formData.password}
                             onChange={handleInputChange}
                             icon={Lock}
@@ -335,18 +349,13 @@ const Profile = () => {
                     </div>
                 </div>
 
-                {/* Payments Section */}
+                {/* Payment Details */}
                 <div className="bg-white rounded-lg border border-gray-200 p-6">
                     <div className="flex items-center gap-2 mb-6">
                         <CreditCard className="w-6 h-6 text-gray-700" />
                         <h2 className="text-xl font-semibold text-gray-900">Payments</h2>
                     </div>
 
-                    <p className="text-gray-600 mb-6">
-                        You can change your payment credentials here.
-                    </p>
-
-                    {/* Payment Options */}
                     <div className="space-y-4 mb-6">
                         <div className="flex items-start space-x-3">
                             <input
@@ -387,14 +396,13 @@ const Profile = () => {
                         </div>
                     </div>
 
-                    {/* Payment Details */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <Input
                             label="Card Holder Name"
                             name="paymentDetails.cardHolderName"
                             value={formData.paymentDetails.cardHolderName}
                             onChange={handleInputChange}
-                            placeholder="Azusa Nakano"
+                            placeholder="John Doe"
                         />
 
                         <Input
@@ -409,14 +417,13 @@ const Profile = () => {
                         <div className="md:col-span-2">
                             <CountrySelector
                                 label="Country"
-                                name="paymentDetails.country"
                                 value={formData.paymentDetails.country}
                                 onChange={handleCountryChange}
-                                placeholder="United Kingdom"
                             />
                         </div>
                     </div>
                 </div>
+
                 {/* Submit Button */}
                 <div className="flex justify-end">
                     <Button
@@ -431,6 +438,7 @@ const Profile = () => {
                 </div>
             </form>
 
+            {/* Danger Zone */}
             <div className="bg-white rounded-lg border border-red-200 p-6 mt-8">
                 <div className="flex items-center gap-2 mb-4">
                     <AlertTriangle className="w-6 h-6 text-red-600" />
@@ -438,7 +446,7 @@ const Profile = () => {
                 </div>
 
                 <p className="text-red-700 mb-4">
-                    Once you delete your account, there is no going back. All your data including patients, visits, and messages will be permanently deleted.
+                    Once you delete your account, there is no going back.
                 </p>
 
                 <Button
@@ -451,7 +459,7 @@ const Profile = () => {
                 </Button>
             </div>
 
-            {/* Delete Account Modal */}
+            {/* Delete Modal */}
             <Modal
                 title="Delete Account"
                 Icon={AlertTriangle}
@@ -464,27 +472,18 @@ const Profile = () => {
             >
                 <div className="space-y-4">
                     <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                        <div className="flex items-center">
-                            <AlertTriangle className="w-5 h-5 text-red-400 mr-2" />
-                            <span className="text-red-800 font-medium">Warning</span>
-                        </div>
-                        <p className="text-red-700 text-sm mt-2">
-                            This action cannot be undone. This will permanently delete your account and remove all your data from our servers.
+                        <p className="text-red-700 text-sm">
+                            This action cannot be undone. Type "DELETE" to confirm.
                         </p>
                     </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Type "DELETE" to confirm
-                        </label>
-                        <input
-                            type="text"
-                            value={deleteConfirmation}
-                            onChange={(e) => setDeleteConfirmation(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                            placeholder="DELETE"
-                        />
-                    </div>
+                    <input
+                        type="text"
+                        value={deleteConfirmation}
+                        onChange={(e) => setDeleteConfirmation(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                        placeholder="DELETE"
+                    />
 
                     <div className="flex justify-end gap-2 pt-4">
                         <Button
