@@ -114,10 +114,8 @@ const getUserProfile = async (req, res) => {
  * @route PUT /api/auth/profile
  * @access Private
  */
-// In authController.js - update the updateUserProfile function
 const updateUserProfile = async (req, res) => {
     try {
-
         const user = await User.findById(req.user._id);
 
         if (!user) {
@@ -129,8 +127,7 @@ const updateUserProfile = async (req, res) => {
         user.email = req.body.email || user.email;
         user.phoneNumber = req.body.phoneNumber || user.phoneNumber;
 
-        // Update payment details if provided
-        // In updateUserProfile function, ensure country is properly handled
+        // FIX: Properly handle payment details with country preservation
         if (req.body.paymentDetails) {
             let paymentDetails;
             try {
@@ -138,49 +135,46 @@ const updateUserProfile = async (req, res) => {
                     ? JSON.parse(req.body.paymentDetails)
                     : req.body.paymentDetails;
 
-                // Ensure we maintain the complete paymentDetails structure
+                // CRITICAL FIX: Preserve ALL existing payment details and only update provided fields
                 user.paymentDetails = {
                     enableAutoPayout: paymentDetails.enableAutoPayout ?? user.paymentDetails?.enableAutoPayout ?? false,
                     notifyNewPayments: paymentDetails.notifyNewPayments ?? user.paymentDetails?.notifyNewPayments ?? false,
-                    cardHolderName: paymentDetails.cardHolderName ?? user.paymentDetails?.cardHolderName,
-                    creditCardNumber: paymentDetails.creditCardNumber ?? user.paymentDetails?.creditCardNumber,
-                    country: paymentDetails.country ?? user.paymentDetails?.country // Ensure country is preserved
+                    cardHolderName: paymentDetails.cardHolderName ?? user.paymentDetails?.cardHolderName ?? '',
+                    creditCardNumber: paymentDetails.creditCardNumber ?? user.paymentDetails?.creditCardNumber ?? '',
+                    country: paymentDetails.country ?? user.paymentDetails?.country ?? '' // FIX: Preserve country
                 };
             } catch (parseError) {
                 console.error('Payment details parse error:', parseError);
                 return res.status(400).json({ message: 'Invalid payment details format' });
             }
         }
-        // Handle profile image upload - WITH FALLBACK
+
+        // CRITICAL FIX: Only update profile image if a new file is uploaded
         if (req.file) {
             try {
-                console.log('Attempting to upload image to Cloudinary...');
+                console.log('New profile image detected, uploading to Cloudinary...');
 
-                // Try Cloudinary upload
                 let imageUrl;
                 try {
                     imageUrl = await uploadToCloudinary(req.file.buffer, 'profiles');
-                    console.log('Cloudinary upload result:', imageUrl);
+                    console.log('Cloudinary upload successful:', imageUrl);
+
+                    // Only update if upload was successful
+                    if (imageUrl) {
+                        user.profileImage = imageUrl;
+                    }
                 } catch (cloudinaryError) {
-                    console.error('Cloudinary upload failed, using fallback:', cloudinaryError.message);
-
-                    // Fallback: Store file locally or use a placeholder
-                    // For now, we'll use a placeholder and log the error
-                    imageUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.username)}&background=random`;
-                    console.log('Using fallback avatar:', imageUrl);
-                }
-
-                if (imageUrl) {
-                    user.profileImage = imageUrl;
-                } else {
-                    console.error('Both Cloudinary and fallback failed');
-                    // Continue without updating the image rather than failing the entire request
+                    console.error('Cloudinary upload failed:', cloudinaryError.message);
+                    // FIX: Don't use fallback avatar - keep existing image
+                    console.log('Keeping existing profile image due to upload failure');
                 }
             } catch (uploadError) {
                 console.error('Image upload error (non-critical):', uploadError);
-                // Don't return error - just log and continue without image update
+                // FIX: Don't modify profileImage on error - preserve existing
             }
         }
+        // FIX: If no new file is uploaded, explicitly preserve the existing profileImage
+        // This prevents it from being overwritten or removed
 
         // Update password if provided
         if (req.body.password && req.body.password.trim() !== '') {
@@ -192,13 +186,14 @@ const updateUserProfile = async (req, res) => {
 
         const updatedUser = await user.save();
 
+        // FIX: Ensure profileImage is always returned in response
         res.json({
             _id: updatedUser._id,
             username: updatedUser.username,
             email: updatedUser.email,
             role: updatedUser.role,
             phoneNumber: updatedUser.phoneNumber,
-            profileImage: updatedUser.profileImage,
+            profileImage: updatedUser.profileImage, // CRITICAL: Always return current image
             paymentDetails: updatedUser.paymentDetails,
             token: generateToken(updatedUser._id),
         });
@@ -340,5 +335,5 @@ export {
     updateUserProfile,
     uploadAvatar,
     createPaymentSession,
-    deleteUserAccount    
+    deleteUserAccount
 };
