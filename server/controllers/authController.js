@@ -1,11 +1,11 @@
 import User from '../models/User.js';
 import generateToken from '../utils/generateToken.js';
 import { uploadToCloudinary } from '../utils/uploadImage.js';
-import Patient from './models/Patient.js';
-import Visit from './models/Visit.js';
-import VisitNote from './models/VisitNote.js';
-import Conversation from './models/Conversation.js';
-import Message from './models/Message.js';
+import Patient from '../models/Patient.js';
+import Visit from '../models/Visit.js';
+import VisitNote from '../models/VisitNote.js';
+import Conversation from '../models/Conversation.js';
+import Message from '../models/Message.js';
 
 /**
  * Register a new user
