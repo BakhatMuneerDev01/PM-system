@@ -12,9 +12,10 @@ const Login = () => {
     const navigate = useNavigate();
 
     const [formData, setFormData] = useState({
-        email: "",
+        usernameOrEmail: "",
         password: "",
     });
+
     const [loading, setLoading] = useState(false);
     const [fieldErrors, setFieldErrors] = useState({});
 
@@ -30,17 +31,17 @@ const Login = () => {
         setFieldErrors({});
 
         try {
-            const { email, password } = formData;
+            const { usernameOrEmail, password } = formData;
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
             // Validation (business logic unchanged)
-            if (!email) {
-                setFieldErrors({ email: "Email is required" });
+            if (!usernameOrEmail) {
+                setFieldErrors({ usernameOrEmail: "Username or email is required" });
                 setLoading(false);
                 return;
             }
-            if (!emailRegex.test(email)) {
-                setFieldErrors({ email: "Please enter a valid email address" });
+            if (usernameOrEmail.includes('@') && !emailRegex.test(usernameOrEmail)) {
+                setFieldErrors({ usernameOrEmail: "Please enter a valid email address" });
                 setLoading(false);
                 return;
             }
@@ -94,17 +95,18 @@ const Login = () => {
 
             <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
                 <Input
-                    label="Email"
-                    name="email"
-                    type="email"
-                    placeholder="Enter your email"
-                    value={formData.email}
+                    label="Username or Email"
+                    name="usernameOrEmail"
+                    type="text"
+                    placeholder="Enter your username or email"
+                    value={formData.usernameOrEmail}
                     onChange={handleChange}
-                    error={fieldErrors.email}
+                    error={fieldErrors.usernameOrEmail}
                     required
                     icon={Mail}
                     className="text-sm sm:text-base"
                 />
+
 
                 <Input
                     label="Password"
