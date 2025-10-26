@@ -39,11 +39,11 @@ const Login = () => {
                 setLoading(false);
                 return;
             }
-            if (!emailRegex.test(email)) {
-                setFieldErrors({ email: "Please enter a valid email address" });
-                setLoading(false);
-                return;
-            }
+            // if (!emailRegex.test(email)) {
+            //     setFieldErrors({ email: "Please enter a valid email address" });
+            //     setLoading(false);
+            //     return;
+            // }
             if (!password) {
                 setFieldErrors({ password: "Password is required" });
                 setLoading(false);
