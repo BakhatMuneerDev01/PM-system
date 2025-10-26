@@ -40,15 +40,25 @@ export const AuthProvider = ({ children }) => {
     };
 
     // Update Profile
-    // In the update function, ensure we're updating the user state properly
     const update = async (formData) => {
-        const res = await updateProfile(formData);
-        setUser({
-            ...user,
-            ...res.data,
-            profileImage: res.data.profileImage // Ensure profile image is updated
-        });
-        return res.data;
+        try {
+            const res = await updateProfile(formData);
+
+            // ✅ FIX: Ensure we update user state with the complete response
+            const updatedUserData = {
+                ...user, // Preserve existing data
+                ...res.data, // Overlay with new data
+                profileImage: res.data.profileImage || user.profileImage // ✅ Fallback to existing
+            };
+
+            setUser(updatedUserData);
+            console.log('User state updated with profileImage:', updatedUserData.profileImage);
+
+            return res.data;
+        } catch (error) {
+            console.error('Update error in AuthContext:', error);
+            throw error;
+        }
     };
 
     // Logout

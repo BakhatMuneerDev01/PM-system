@@ -116,8 +116,8 @@ const getUserProfile = async (req, res) => {
  */
 const updateUserProfile = async (req, res) => {
     try {
-
         const user = await User.findById(req.user._id);
+
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
@@ -126,9 +126,35 @@ const updateUserProfile = async (req, res) => {
         user.username = req.body.username || user.username;
         user.email = req.body.email || user.email;
         user.phoneNumber = req.body.phoneNumber || user.phoneNumber;
-        user.profileImage = req.body.profileImage || user.profileImage;
 
-        // FIX: Properly handle payment details with country preservation
+        // ✅ FIX: Preserve existing profile image if no new file uploaded
+        let shouldUpdateImage = false;
+        let newImageUrl = user.profileImage; // Start with existing image
+
+        // Handle profile image upload
+        if (req.file) {
+            try {
+                console.log('Attempting to upload image to Cloudinary...');
+                const uploadedUrl = await uploadToCloudinary(req.file.buffer, 'profiles');
+
+                if (uploadedUrl) {
+                    newImageUrl = uploadedUrl;
+                    shouldUpdateImage = true;
+                    console.log('✅ Cloudinary upload successful:', uploadedUrl);
+                } else {
+                    console.warn('⚠️ Cloudinary returned no URL, keeping existing image');
+                }
+            } catch (cloudinaryError) {
+                console.error('❌ Cloudinary upload failed:', cloudinaryError.message);
+                // Don't change the image - keep existing one
+                console.log('Keeping existing profile image due to upload failure');
+            }
+        }
+
+        // ✅ FIX: Always set profileImage (either new or existing)
+        user.profileImage = newImageUrl;
+
+        // ✅ FIX: Properly handle paymentDetails with explicit country preservation
         if (req.body.paymentDetails) {
             let paymentDetails;
             try {
@@ -136,41 +162,21 @@ const updateUserProfile = async (req, res) => {
                     ? JSON.parse(req.body.paymentDetails)
                     : req.body.paymentDetails;
 
-                // CRITICAL FIX: Preserve ALL existing payment details and only update provided fields
+                // Explicitly preserve all fields including country
                 user.paymentDetails = {
                     enableAutoPayout: paymentDetails.enableAutoPayout ?? user.paymentDetails?.enableAutoPayout ?? false,
                     notifyNewPayments: paymentDetails.notifyNewPayments ?? user.paymentDetails?.notifyNewPayments ?? false,
                     cardHolderName: paymentDetails.cardHolderName ?? user.paymentDetails?.cardHolderName ?? '',
                     creditCardNumber: paymentDetails.creditCardNumber ?? user.paymentDetails?.creditCardNumber ?? '',
-                    country: paymentDetails.country ?? user.paymentDetails?.country ?? '' // FIX: Preserve country
+                    country: paymentDetails.country ?? user.paymentDetails?.country ?? '' // ✅ Explicit country preservation
                 };
+
+                console.log('✅ Payment details updated with country:', user.paymentDetails.country);
             } catch (parseError) {
                 console.error('Payment details parse error:', parseError);
                 return res.status(400).json({ message: 'Invalid payment details format' });
             }
         }
-
-        // CRITICAL FIX: Only update profile image if a new file is uploaded
-        if (req.file) {
-            try {
-                // ... (Cloudinary upload logic)
-                let imageUrl;
-                try {
-                    imageUrl = await uploadToCloudinary(req.file.buffer, 'profiles');
-                } catch (cloudinaryError) {
-                    // ... (fallback logic)
-                }
-                if (imageUrl) {
-                    // This overwrites the preservation line above if a new image was successful
-                    user.profileImage = imageUrl;[cite_start]// [cite: 31]
-                }
-            } catch (uploadError) {
-                console.error('Image upload error (non-critical):', uploadError);
-                // FIX: Don't modify profileImage on error - preserve existing
-            }
-        }
-        // FIX: If no new file is uploaded, explicitly preserve the existing profileImage
-        // This prevents it from being overwritten or removed
 
         // Update password if provided
         if (req.body.password && req.body.password.trim() !== '') {
@@ -182,22 +188,24 @@ const updateUserProfile = async (req, res) => {
 
         const updatedUser = await user.save();
 
-        // FIX: Ensure profileImage is always returned in response
-        res.json({
+        // ✅ FIX: Ensure profileImage is always in response
+        const responseData = {
             _id: updatedUser._id,
             username: updatedUser.username,
             email: updatedUser.email,
             role: updatedUser.role,
             phoneNumber: updatedUser.phoneNumber,
-            profileImage: updatedUser.profileImage, // CRITICAL: Always return current image
+            profileImage: updatedUser.profileImage, // ✅ Always include this
             paymentDetails: updatedUser.paymentDetails,
             token: generateToken(updatedUser._id),
-        });
+        };
+
+        console.log('✅ Profile update successful. Returning profileImage:', responseData.profileImage);
+        res.json(responseData);
 
     } catch (error) {
         console.error('Update profile error:', error);
 
-        // Handle duplicate key errors
         if (error.code === 11000) {
             const field = Object.keys(error.keyPattern)[0];
             return res.status(400).json({
@@ -205,7 +213,6 @@ const updateUserProfile = async (req, res) => {
             });
         }
 
-        // Handle validation errors
         if (error.name === 'ValidationError') {
             const messages = Object.values(error.errors).map(err => err.message);
             return res.status(400).json({ message: messages.join(', ') });

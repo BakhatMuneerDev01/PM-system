@@ -30,6 +30,7 @@ const Profile = () => {
     const [profileImage, setProfileImage] = useState(null);
     const [imagePreview, setImagePreview] = useState('');
 
+    // Better state initialization
     useEffect(() => {
         if (user) {
             setFormData({
@@ -45,9 +46,12 @@ const Profile = () => {
                     country: user.paymentDetails?.country || ''
                 }
             });
-            setImagePreview(user.profileImage || '');
+            // Don't reset imagePreview if user has an image
+            if (user.profileImage && !imagePreview) {
+                setImagePreview(user.profileImage);
+            }
         }
-    }, [user]);
+    }, [user]); // Remove imagePreview from dependencies
 
     const handleInputChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -95,7 +99,11 @@ const Profile = () => {
             }
 
             setProfileImage(file);
-            setImagePreview(URL.createObjectURL(file));
+            const newPreview = URL.createObjectURL(file);
+            setImagePreview(newPreview);
+
+            // Cleanup old preview URL to prevent memory leaks
+            return () => URL.revokeObjectURL(newPreview);
         }
     };
 
@@ -143,51 +151,58 @@ const Profile = () => {
             submitData.append('email', formData.email);
             submitData.append('phoneNumber', formData.phoneNumber);
 
-            // FIX 1: Ensure paymentDetails includes ALL fields including country
+            // Include country explicitly
             const paymentDetails = {
                 enableAutoPayout: formData.paymentDetails.enableAutoPayout,
                 notifyNewPayments: formData.paymentDetails.notifyNewPayments,
                 cardHolderName: formData.paymentDetails.cardHolderName,
                 creditCardNumber: formData.paymentDetails.creditCardNumber,
-                country: formData.paymentDetails.country // CRITICAL: Include country
+                country: formData.paymentDetails.country // Ensure country is included
             };
             submitData.append('paymentDetails', JSON.stringify(paymentDetails));
 
-            // FIX 2: Only append profileImage if a NEW file was selected
+            // Only append new image file if one was selected
             if (profileImage) {
                 submitData.append('profileImage', profileImage);
+                console.log('📤 Uploading new profile image');
+            } else {
+                console.log('ℹ️ No new image - keeping existing profile picture');
             }
-            // CRITICAL: If no new image, don't append anything - backend will preserve existing
 
-            // FIX 3: Only append password if it's not empty
-            if (formData.password && formData.password.trim()) {
+            if (formData.password) {
                 submitData.append('password', formData.password);
             }
 
-            // Call the update function
-            await update(submitData);
+            //  Update with proper response handling
+            const updatedData = await update(submitData);
+
+            //  Update preview with response data
+            if (updatedData.profileImage) {
+                setImagePreview(updatedData.profileImage);
+            }
 
             toast.success('Profile updated successfully');
-
-            // FIX 4: Reset only the password field and new image file, not the preview
             setFormData(prev => ({ ...prev, password: '' }));
-            setProfileImage(null); // Clear the file object but keep imagePreview
-
-            // The imagePreview should now show the updated user.profileImage from the response
-
+            setProfileImage(null); // Clear file input only after successful update
         } catch (error) {
             console.error('Profile update error:', error);
             toast.error(error.response?.data?.message || 'Failed to update profile');
+
+            //  Revert preview on error
+            if (user?.profileImage) {
+                setImagePreview(user.profileImage);
+            }
         } finally {
             setLoading(false);
         }
     };
 
-    // FIX 5: Update the handleRemoveImage function
+    // Update the handleRemoveImage function
     const handleRemoveImage = () => {
         setProfileImage(null);
-        // FIX: Reset to user's current image, not empty
+        // ✅ Revert to user's existing image, not empty
         setImagePreview(user?.profileImage || '');
+        toast.info('Image change cancelled. Click save to keep current picture.');
     };
 
     // FIX 6: Ensure useEffect properly syncs user.profileImage
