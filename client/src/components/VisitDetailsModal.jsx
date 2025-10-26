@@ -103,7 +103,7 @@ const VisitDetailsModal = ({ visit, isOpen, onClose, onEdit, onDelete }) => {
 
                 {/* Action Buttons - Only show if handlers are provided */}
                 {(onEdit || onDelete) && (
-                    <div className="flex justify-end gap-2 pt-4 border-t">
+                    <div className="flex justify-end gap-2 pt-4">
                         {onEdit && (
                             <Button
                                 variant="outline"
