@@ -27,7 +27,7 @@ const Profile = () => {
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [deleteConfirmation, setDeleteConfirmation] = useState('');
 
-    // ✅ FIX: Initialize state only once with user data
+    // ✅ FIX: Improved useEffect with proper dependencies
     useEffect(() => {
         if (user) {
             setFormData({
@@ -44,14 +44,21 @@ const Profile = () => {
                 }
             });
 
-            // ✅ Set image preview only if user has a valid image
-            if (user.profileImage && user.profileImage.startsWith('http')) {
-                setImagePreview(user.profileImage);
-            } else {
-                setImagePreview(''); // Clear invalid URLs
-            }
+            // ✅ CRITICAL FIX: Update image preview whenever user data changes
+            updateImagePreviewFromUser(user);
         }
-    }, [user?._id]); // ✅ Only re-run if user ID changes
+    }, [user]); // ✅ Now watches entire user object, not just _id
+
+    // ✅ NEW: Separate function to handle image preview updates
+    const updateImagePreviewFromUser = (userData) => {
+        if (userData?.profileImage && isValidImageUrl(userData.profileImage)) {
+            setImagePreview(userData.profileImage);
+            console.log('🔄 Image preview updated from user data:', userData.profileImage);
+        } else {
+            setImagePreview('');
+            console.log('🔄 Image preview cleared - no valid user image');
+        }
+    };
 
     // ✅ FIX: Validate image URLs before using them
     const isValidImageUrl = (url) => {
@@ -94,7 +101,7 @@ const Profile = () => {
         }));
     };
 
-    // ✅ FIX: Enhanced image change handler with validation
+    // ✅ FIX: Enhanced image change handler
     const handleImageChange = (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -111,7 +118,7 @@ const Profile = () => {
             return;
         }
 
-        console.log('📸 Image selected:', {
+        console.log('📸 New image selected:', {
             name: file.name,
             size: file.size,
             type: file.type
@@ -120,12 +127,9 @@ const Profile = () => {
         setProfileImage(file);
         const preview = URL.createObjectURL(file);
         setImagePreview(preview);
-
-        // Cleanup old object URL to prevent memory leaks
-        return () => URL.revokeObjectURL(preview);
     };
 
-    // ✅ FIX: Complete submit handler rewrite
+    // ✅ FIX: Complete submit handler rewrite with better state management
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
@@ -164,23 +168,15 @@ const Profile = () => {
             // ✅ Call update and handle response
             console.log('🔄 Sending update request...');
             const response = await update(submitData);
-            console.log('✅ Update response received:', response);
+            console.log('✅ Update response received:', {
+                username: response.username,
+                hasProfileImage: !!response.profileImage,
+                profileImage: response.profileImage
+            });
 
-            // ✅ Update local state with response data
-            if (response) {
-                // Update image preview with valid URL from response
-                if (response.profileImage && isValidImageUrl(response.profileImage)) {
-                    setImagePreview(response.profileImage);
-                    console.log('✅ Image preview updated:', response.profileImage);
-                } else if (user?.profileImage && isValidImageUrl(user.profileImage)) {
-                    // Fallback to existing user image
-                    setImagePreview(user.profileImage);
-                    console.log('ℹ️ Using existing image:', user.profileImage);
-                } else {
-                    setImagePreview('');
-                    console.log('⚠️ No valid image URL available');
-                }
-            }
+            // ✅ CRITICAL FIX: Let the useEffect handle image preview updates from the updated user context
+            // The AuthContext update will trigger a user state change, which will trigger our useEffect
+            // This ensures we always use the authoritative image URL from the context
 
             toast.success('Profile updated successfully');
 
@@ -193,12 +189,8 @@ const Profile = () => {
             const errorMessage = error.response?.data?.message || error.message || 'Failed to update profile';
             toast.error(errorMessage);
 
-            // ✅ Revert to user's existing image on error
-            if (user?.profileImage && isValidImageUrl(user.profileImage)) {
-                setImagePreview(user.profileImage);
-            } else {
-                setImagePreview('');
-            }
+            // ✅ Revert image preview to current user state on error
+            updateImagePreviewFromUser(user);
         } finally {
             setLoading(false);
         }
@@ -207,15 +199,9 @@ const Profile = () => {
     // ✅ FIX: Updated remove image handler
     const handleRemoveImage = () => {
         setProfileImage(null);
-
-        // Revert to user's existing image if valid
-        if (user?.profileImage && isValidImageUrl(user.profileImage)) {
-            setImagePreview(user.profileImage);
-            toast.info('Image change cancelled');
-        } else {
-            setImagePreview('');
-            toast.info('Image removed');
-        }
+        // Revert to user's existing image
+        updateImagePreviewFromUser(user);
+        toast.info('Image change cancelled');
     };
 
     const handleDeleteAccount = async () => {
