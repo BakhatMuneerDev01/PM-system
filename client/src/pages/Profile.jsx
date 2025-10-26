@@ -26,6 +26,7 @@ const Profile = () => {
     const [imagePreview, setImagePreview] = useState('');
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [deleteConfirmation, setDeleteConfirmation] = useState('');
+    const [imageLoadError, setImageLoadError] = useState(false);
 
     // ✅ FIX: Improved useEffect with proper image preview initialization
     useEffect(() => {
