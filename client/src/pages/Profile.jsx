@@ -5,6 +5,7 @@ import CountrySelector from '../components/CountrySelector'
 import StripePaymentForm from '../components/PaymentForm';;
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
+import api from '../api/axios';
 
 const Profile = () => {
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
