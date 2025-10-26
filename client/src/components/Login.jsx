@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Mail } from "lucide-react";
-import { useAuth } from '../context/AuthContext';
+import { Mail, Lock } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
 import AuthLayout from "../components/layout/AuthLayout";
 import Input from "../components/ui/Input";
 import Button from "../components/ui/Button";
@@ -12,63 +12,50 @@ const Login = () => {
     const navigate = useNavigate();
 
     const [formData, setFormData] = useState({
-        usernameOrEmail: "",
+        email: "",
         password: "",
     });
     const [loading, setLoading] = useState(false);
-    const [fieldErrors, setFieldErrors] = useState({}); // <-- store inline errors
+    const [fieldErrors, setFieldErrors] = useState({});
 
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData((prev) => ({ ...prev, [name]: value }));
-        setFieldErrors((prev) => ({ ...prev, [name]: "" })); // clear error on change
+        setFieldErrors((prev) => ({ ...prev, [name]: "" }));
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
-
-        // reset errors
         setFieldErrors({});
 
         try {
-            const { usernameOrEmail, password } = formData;
+            const { email, password } = formData;
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-            // inline validation
-            if (!usernameOrEmail) {
-                setFieldErrors((prev) => ({
-                    ...prev,
-                    usernameOrEmail: "Username or Email is required",
-                }));
+            // Validation (business logic unchanged)
+            if (!email) {
+                setFieldErrors({ email: "Email is required" });
                 setLoading(false);
                 return;
             }
-            if (usernameOrEmail.includes("@") && !emailRegex.test(usernameOrEmail)) {
-                setFieldErrors((prev) => ({
-                    ...prev,
-                    usernameOrEmail: "Please enter a valid email address",
-                }));
+            if (!emailRegex.test(email)) {
+                setFieldErrors({ email: "Please enter a valid email address" });
                 setLoading(false);
                 return;
             }
             if (!password) {
-                setFieldErrors((prev) => ({
-                    ...prev,
-                    password: "Password is required",
-                }));
+                setFieldErrors({ password: "Password is required" });
                 setLoading(false);
                 return;
             }
 
-            // call backend
             await login(formData);
-            toast.success("Login successful");
+            toast.success("Logged in successfully");
             navigate("/");
         } catch (err) {
-            const message =
-                err.response?.data?.message || "An error occurred during login";
-            toast.error(message); // backend errors still shown in toast
+            const message = err.response?.data?.message || "An error occurred during login";
+            toast.error(message);
         } finally {
             setLoading(false);
         }
@@ -77,43 +64,46 @@ const Login = () => {
     return (
         <AuthLayout>
             {/* Logo */}
-            <div className="text-center mb-6">
+            <div className="text-center mb-4 sm:mb-6">
                 <img
-                    src="/Logo.png" // replace with your logo path
+                    src="/Logo.png"
                     alt="Logo"
-                    className="mx-auto"
+                    className="mx-auto w-32 h-12 sm:w-40 sm:h-14 object-contain"
                 />
             </div>
 
             {/* Toggle Buttons */}
-            <div className="flex justify-center mb-6 space-x-1">
+            <div className="flex justify-center mb-4 sm:mb-6 space-x-1 bg-gray-100 rounded-lg p-1">
                 <Button
                     variant='primary'
-                    size="large"
+                    size="medium"
                     disabled
-                    onClick={() => navigate('/login')}
+                    className="flex-1 min-w-0 text-sm sm:text-base"
                 >
                     Login
                 </Button>
                 <Button
                     variant='ghost'
-                    size="large"
+                    size="medium"
                     onClick={() => navigate('/signup')}
+                    className="flex-1 min-w-0 text-sm sm:text-base"
                 >
                     Register
                 </Button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
                 <Input
-                    label="Username or Email"
-                    name="usernameOrEmail"
-                    placeholder="Enter your username or email"
-                    value={formData.usernameOrEmail}
-                    icon={Mail}
+                    label="Email"
+                    name="email"
+                    type="email"
+                    placeholder="Enter your email"
+                    value={formData.email}
                     onChange={handleChange}
-                    error={fieldErrors.usernameOrEmail}
+                    error={fieldErrors.email}
                     required
+                    icon={Mail}
+                    className="text-sm sm:text-base"
                 />
 
                 <Input
@@ -126,6 +116,7 @@ const Login = () => {
                     error={fieldErrors.password}
                     required
                     showPasswordToggle
+                    className="text-sm sm:text-base"
                 />
 
                 <Button
@@ -133,15 +124,15 @@ const Login = () => {
                     size="medium"
                     variant="primary"
                     disabled={loading}
-                    className="w-full"
+                    className="w-full text-sm sm:text-base py-3"
                 >
                     {loading ? "Logging in..." : "Login"}
                 </Button>
             </form>
 
-            <p className="mt-4 text-sm text-center text-gray-600">
-                Don’t have an account?{" "}
-                <Link to="/signup" className="text-primary-600 hover:underline">
+            <p className="mt-3 sm:mt-4 text-xs sm:text-sm text-center text-gray-600">
+                Don't have an account?{" "}
+                <Link to="/signup" className="text-primary-600 hover:underline font-medium">
                     Sign up
                 </Link>
             </p>

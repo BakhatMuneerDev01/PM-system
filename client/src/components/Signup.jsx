@@ -18,12 +18,12 @@ const Signup = () => {
         confirmPassword: "",
     });
     const [loading, setLoading] = useState(false);
-    const [fieldErrors, setFieldErrors] = useState({}); // inline errors
+    const [fieldErrors, setFieldErrors] = useState({});
 
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData((prev) => ({ ...prev, [name]: value }));
-        setFieldErrors((prev) => ({ ...prev, [name]: "" })); // clear error on change
+        setFieldErrors((prev) => ({ ...prev, [name]: "" }));
     };
 
     const handleSubmit = async (e) => {
@@ -35,64 +35,44 @@ const Signup = () => {
             const { username, email, password, confirmPassword } = formData;
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-            // inline validation
+            // Validation
             if (!username) {
-                setFieldErrors((prev) => ({
-                    ...prev,
-                    username: "Username is required",
-                }));
+                setFieldErrors({ username: "Username is required" });
                 setLoading(false);
                 return;
             }
             if (!email) {
-                setFieldErrors((prev) => ({
-                    ...prev,
-                    email: "Email is required",
-                }));
+                setFieldErrors({ email: "Email is required" });
                 setLoading(false);
                 return;
             }
             if (!emailRegex.test(email)) {
-                setFieldErrors((prev) => ({
-                    ...prev,
-                    email: "Please enter a valid email address",
-                }));
+                setFieldErrors({ email: "Please enter a valid email address" });
                 setLoading(false);
                 return;
             }
             if (!password) {
-                setFieldErrors((prev) => ({
-                    ...prev,
-                    password: "Password is required",
-                }));
+                setFieldErrors({ password: "Password is required" });
                 setLoading(false);
                 return;
             }
             if (password.length < 8) {
-                setFieldErrors((prev) => ({
-                    ...prev,
-                    password: "Password must be at least 8 characters",
-                }));
+                setFieldErrors({ password: "Password must be at least 8 characters" });
                 setLoading(false);
                 return;
             }
             if (password !== confirmPassword) {
-                setFieldErrors((prev) => ({
-                    ...prev,
-                    confirmPassword: "Passwords do not match",
-                }));
+                setFieldErrors({ confirmPassword: "Passwords do not match" });
                 setLoading(false);
                 return;
             }
 
-            // call backend
             await register(formData);
             toast.success("Account created successfully");
             navigate("/");
         } catch (err) {
-            const message =
-                err.response?.data?.message || "An error occurred during registration";
-            toast.error(message); // backend error
+            const message = err.response?.data?.message || "An error occurred during registration";
+            toast.error(message);
         } finally {
             setLoading(false);
         }
@@ -101,33 +81,35 @@ const Signup = () => {
     return (
         <AuthLayout>
             {/* Logo */}
-            <div className="text-center mb-6">
+            <div className="text-center mb-4 sm:mb-6">
                 <img
-                    src="/Logo.png" // replace with actual logo path
+                    src="/Logo.png"
                     alt="Logo"
-                    className="mx-auto"
+                    className="mx-auto w-32 h-12 sm:w-40 sm:h-14 object-contain"
                 />
             </div>
+
             {/* Toggle Buttons */}
-            <div className="flex justify-center mb-6 space-x-1">
+            <div className="flex justify-center mb-4 sm:mb-6 space-x-1 bg-gray-100 rounded-lg p-1">
                 <Button
                     variant='ghost'
-                    size="large"
+                    size="medium"
                     onClick={() => navigate('/login')}
+                    className="flex-1 min-w-0 text-sm sm:text-base"
                 >
                     Login
                 </Button>
                 <Button
                     variant='primary'
-                    size="large"
+                    size="medium"
                     disabled
-                    onClick={() => navigate('/signup')}
+                    className="flex-1 min-w-0 text-sm sm:text-base"
                 >
                     Register
                 </Button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
                 <Input
                     label="Username"
                     name="username"
@@ -137,6 +119,7 @@ const Signup = () => {
                     error={fieldErrors.username}
                     required
                     icon={User}
+                    className="text-sm sm:text-base"
                 />
 
                 <Input
@@ -149,6 +132,7 @@ const Signup = () => {
                     error={fieldErrors.email}
                     required
                     icon={Mail}
+                    className="text-sm sm:text-base"
                 />
 
                 <Input
@@ -161,6 +145,7 @@ const Signup = () => {
                     error={fieldErrors.password}
                     required
                     showPasswordToggle
+                    className="text-sm sm:text-base"
                 />
 
                 <Input
@@ -173,6 +158,7 @@ const Signup = () => {
                     error={fieldErrors.confirmPassword}
                     required
                     showPasswordToggle
+                    className="text-sm sm:text-base"
                 />
 
                 <Button
@@ -180,15 +166,15 @@ const Signup = () => {
                     size="medium"
                     variant="primary"
                     disabled={loading}
-                    className="w-full"
+                    className="w-full text-sm sm:text-base py-3"
                 >
                     {loading ? "Registering..." : "Sign Up"}
                 </Button>
             </form>
 
-            <p className="mt-4 text-sm text-center text-gray-600">
+            <p className="mt-3 sm:mt-4 text-xs sm:text-sm text-center text-gray-600">
                 Already have an account?{" "}
-                <Link to="/login" className="text-primary-600 hover:underline">
+                <Link to="/login" className="text-primary-600 hover:underline font-medium">
                     Login
                 </Link>
             </p>
