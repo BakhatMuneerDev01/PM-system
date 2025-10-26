@@ -105,14 +105,32 @@ const Profile = () => {
         }
 
         try {
-            await api.delete('/auth/account');
+            // Ensure Authorization header is explicitly sent for this DELETE request.
+            // This avoids relying on the interceptor (which sometimes may not run
+            // or may be mis-configured) and avoids token omission for DELETE calls.
+            await api.delete('/auth/account', {
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem('token')}`
+                }
+            });
+
             toast.success('Account deleted successfully');
             logout();
             navigate('/login');
         } catch (error) {
-            console.error('Failed to delete account:', error);
-            toast.error(error.response?.data?.message || 'Failed to delete account');
+            // Log richer diagnostics (status, data) to aid debugging
+            console.error('Failed to delete account:', {
+                message: error.message,
+                status: error.response?.status,
+                data: error.response?.data
+            });
+
+            // Prefer backend-provided message, fall back to axios/network message, then to generic.
+            const serverMessage = error.response?.data?.message;
+            const networkMessage = error.message;
+            toast.error(serverMessage || networkMessage || 'Failed to delete account');
         }
+
     };
 
     // In the handleSubmit function, ensure paymentDetails is properly structured
