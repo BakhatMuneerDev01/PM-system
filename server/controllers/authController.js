@@ -116,8 +116,8 @@ const getUserProfile = async (req, res) => {
  */
 const updateUserProfile = async (req, res) => {
     try {
-        const user = await User.findById(req.user._id);
 
+        const user = await User.findById(req.user._id);
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
@@ -126,6 +126,7 @@ const updateUserProfile = async (req, res) => {
         user.username = req.body.username || user.username;
         user.email = req.body.email || user.email;
         user.phoneNumber = req.body.phoneNumber || user.phoneNumber;
+        user.profileImage = req.body.profileImage || user.profileImage;
 
         // FIX: Properly handle payment details with country preservation
         if (req.body.paymentDetails) {
@@ -152,21 +153,16 @@ const updateUserProfile = async (req, res) => {
         // CRITICAL FIX: Only update profile image if a new file is uploaded
         if (req.file) {
             try {
-                console.log('New profile image detected, uploading to Cloudinary...');
-
+                // ... (Cloudinary upload logic)
                 let imageUrl;
                 try {
                     imageUrl = await uploadToCloudinary(req.file.buffer, 'profiles');
-                    console.log('Cloudinary upload successful:', imageUrl);
-
-                    // Only update if upload was successful
-                    if (imageUrl) {
-                        user.profileImage = imageUrl;
-                    }
                 } catch (cloudinaryError) {
-                    console.error('Cloudinary upload failed:', cloudinaryError.message);
-                    // FIX: Don't use fallback avatar - keep existing image
-                    console.log('Keeping existing profile image due to upload failure');
+                    // ... (fallback logic)
+                }
+                if (imageUrl) {
+                    // This overwrites the preservation line above if a new image was successful
+                    user.profileImage = imageUrl;[cite_start]// [cite: 31]
                 }
             } catch (uploadError) {
                 console.error('Image upload error (non-critical):', uploadError);
