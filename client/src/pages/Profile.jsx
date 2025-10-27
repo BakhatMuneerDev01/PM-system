@@ -65,38 +65,38 @@ const Profile = () => {
     };
 
     // ✅ FIX: Enhanced image URL validation
-    const isValidImageUrl = (url) => {
-        if (!url) return false;
+    // const isValidImageUrl = (url) => {
+    //     if (!url) return false;
 
-        // ✅ CRITICAL: Check for placeholder Cloudinary URLs
-        if (url.includes('your_cloud_name') || url.includes('cloudinary.com/your_cloud_name')) {
-            console.warn('❌ Invalid Cloudinary URL detected:', url);
-            return false;
-        }
+    //     // ✅ CRITICAL: Check for placeholder Cloudinary URLs
+    //     if (url.includes('your_cloud_name') || url.includes('cloudinary.com/your_cloud_name')) {
+    //         console.warn('❌ Invalid Cloudinary URL detected:', url);
+    //         return false;
+    //     }
 
-        // Allow ui-avatars.com URLs
-        if (url.includes('ui-avatars.com')) return true;
+    //     // Allow ui-avatars.com URLs
+    //     if (url.includes('ui-avatars.com')) return true;
 
-        // Allow valid Cloudinary URLs
-        if (url.includes('res.cloudinary.com')) {
-            try {
-                const urlObj = new URL(url);
-                const pathParts = urlObj.pathname.split('/');
-                // Check if it has proper Cloudinary structure
-                return pathParts.length >= 4 && pathParts[1] === 'image' && pathParts[2] === 'upload';
-            } catch {
-                return false;
-            }
-        }
+    //     // Allow valid Cloudinary URLs
+    //     if (url.includes('res.cloudinary.com')) {
+    //         try {
+    //             const urlObj = new URL(url);
+    //             const pathParts = urlObj.pathname.split('/');
+    //             // Check if it has proper Cloudinary structure
+    //             return pathParts.length >= 4 && pathParts[1] === 'image' && pathParts[2] === 'upload';
+    //         } catch {
+    //             return false;
+    //         }
+    //     }
 
-        // General URL validation
-        try {
-            const urlObj = new URL(url);
-            return urlObj.protocol === 'http:' || urlObj.protocol === 'https:';
-        } catch {
-            return false;
-        }
-    };
+    //     // General URL validation
+    //     try {
+    //         const urlObj = new URL(url);
+    //         return urlObj.protocol === 'http:' || urlObj.protocol === 'https:';
+    //     } catch {
+    //         return false;
+    //     }
+    // };
 
     // ✅ FIX: Enhanced image error handler
     const handleImageError = (imageUrl) => {
@@ -166,6 +166,7 @@ const Profile = () => {
         setImagePreview(preview);
     };
     // ✅ FIX: Complete submit handler rewrite with proper file handling
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
@@ -188,7 +189,7 @@ const Profile = () => {
             };
             submitData.append('paymentDetails', JSON.stringify(paymentDetails));
 
-            // ✅ CRITICAL FIX: Ensure file is properly appended to FormData
+            // ✅ CRITICAL FIX: Only append image if a NEW file was selected
             if (profileImage instanceof File) {
                 submitData.append('profileImage', profileImage);
                 console.log('📤 Uploading new profile image:', profileImage.name);
@@ -201,40 +202,100 @@ const Profile = () => {
                 submitData.append('password', formData.password);
             }
 
-            // ✅ Call update and handle response
-            console.log('🔄 Sending update request...');
+            // ✅ Log FormData for debugging
+            console.log('📤 Sending update request...');
+            for (let [key, value] of submitData.entries()) {
+                console.log(`  ${key}:`, value instanceof File ? `File(${value.name})` : value);
+            }
+
             const response = await update(submitData);
             console.log('✅ Update response received:', {
                 username: response.username,
                 hasProfileImage: !!response.profileImage,
-                profileImage: response.profileImage
+                profileImageUrl: response.profileImage
             });
 
-            // ✅ CRITICAL FIX: Update image preview with the actual response from backend
-            if (response.profileImage && isValidImageUrl(response.profileImage)) {
-                setImagePreview(response.profileImage);
-                setImageLoadError(false);
-                console.log('🔄 Image preview updated from response:', response.profileImage);
+            // ✅ CRITICAL: Validate response profileImage before updating preview
+            if (response.profileImage) {
+                if (isValidImageUrl(response.profileImage)) {
+                    setImagePreview(response.profileImage);
+                    setImageLoadError(false);
+                    console.log('✅ Image preview updated:', response.profileImage);
+                } else {
+                    console.error('❌ Backend returned invalid image URL:', response.profileImage);
+                    toast.error('Image upload failed - invalid URL returned from server');
+                    // ✅ Keep old preview on invalid URL
+                    updateImagePreviewFromUser(user);
+                }
             } else {
-                setImagePreview('');
-                setImageLoadError(false);
+                // ✅ No image in response - preserve existing
+                updateImagePreviewFromUser(user);
             }
 
             toast.success('Profile updated successfully');
 
-            // ✅ Reset only the temporary states
+            // Reset states
             setFormData(prev => ({ ...prev, password: '' }));
-            setProfileImage(null); // Clear file input
+            setProfileImage(null);
 
         } catch (error) {
             console.error('❌ Profile update error:', error);
             const errorMessage = error.response?.data?.message || error.message || 'Failed to update profile';
             toast.error(errorMessage);
 
-            // ✅ Revert image preview to current user state on error
+            // ✅ Revert to original user state on error
             updateImagePreviewFromUser(user);
         } finally {
             setLoading(false);
+        }
+    };
+
+    // ✅ ENHANCED: Stricter URL validation
+    const isValidImageUrl = (url) => {
+        if (!url) return false;
+
+        // ✅ CRITICAL: Reject placeholder Cloudinary URLs
+        const invalidPatterns = [
+            'your_cloud_name',
+            'cloudinary.com/your_cloud_name',
+            'default_profile_image',
+            '/v1/default_profile_image'
+        ];
+
+        if (invalidPatterns.some(pattern => url.includes(pattern))) {
+            console.error('❌ Invalid Cloudinary URL detected:', url);
+            return false;
+        }
+
+        // Allow ui-avatars.com URLs
+        if (url.includes('ui-avatars.com')) return true;
+
+        // Validate Cloudinary URLs
+        if (url.includes('res.cloudinary.com')) {
+            try {
+                const urlObj = new URL(url);
+                const pathParts = urlObj.pathname.split('/');
+                // Check proper structure: /cloud_name/image/upload/...
+                const isValidStructure = pathParts.length >= 4 &&
+                    pathParts[2] === 'upload' &&
+                    !pathParts[1].includes('your_cloud_name');
+
+                if (!isValidStructure) {
+                    console.error('❌ Malformed Cloudinary URL structure:', url);
+                    return false;
+                }
+                return true;
+            } catch {
+                return false;
+            }
+        }
+
+        // General URL validation
+        try {
+            const urlObj = new URL(url);
+            return urlObj.protocol === 'http:' || urlObj.protocol === 'https:';
+        } catch {
+            return false;
         }
     };
 
