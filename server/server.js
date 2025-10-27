@@ -1,3 +1,5 @@
+// Load env variables FIRST
+dotenv.config();
 // server.js - UPDATED
 import express from 'express';
 import dotenv from 'dotenv';
@@ -5,8 +7,33 @@ import cors from 'cors';
 import connectDB from './config/db.js';
 import { configureCloudinary } from './utils/uploadImage.js'; // Import the configuration function
 
-// Load env variables FIRST
-dotenv.config();
+// ✅ CRITICAL: Validate Cloudinary config before starting server
+try {
+    console.log('🔧 Validating Cloudinary configuration...');
+
+    // Check environment variables exist
+    if (!process.env.CLOUDINARY_CLOUD_NAME ||
+        !process.env.CLOUDINARY_API_KEY ||
+        !process.env.CLOUDINARY_API_SECRET) {
+        throw new Error('❌ Missing Cloudinary environment variables');
+    }
+
+    // Check for placeholder values
+    if (process.env.CLOUDINARY_CLOUD_NAME.includes('your_cloud_name')) {
+        throw new Error('❌ CLOUDINARY_CLOUD_NAME contains placeholder value "your_cloud_name" - Replace with actual cloud name from Cloudinary dashboard');
+    }
+
+    configureCloudinary();
+    console.log('✅ Cloudinary configuration validated successfully');
+} catch (error) {
+    console.error('❌ CRITICAL: Cloudinary configuration failed:', error.message);
+    console.error('📋 Fix instructions:');
+    console.error('   1. Go to https://cloudinary.com/console');
+    console.error('   2. Copy your Cloud Name, API Key, and API Secret');
+    console.error('   3. Update server/.env with actual values');
+    console.error('   4. Restart the server');
+    process.exit(1); // ✅ Prevent server from starting with invalid config
+}
 
 // create server
 const app = express();
@@ -64,7 +91,7 @@ connectDB()
     .then(() => {
         console.log('Database connected successfully');
         app.listen(PORT, () => {
-            console.log(`Server running on port ${PORT}`);
+            console.log(`Server running on port ${PORT} `);
         });
     })
     .catch((err) => {
