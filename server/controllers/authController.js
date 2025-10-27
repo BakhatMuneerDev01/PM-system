@@ -114,6 +114,7 @@ const getUserProfile = async (req, res) => {
  * @route PUT /api/auth/profile
  * @access Private
  */
+
 const updateUserProfile = async (req, res) => {
     try {
         const user = await User.findById(req.user._id);
@@ -122,48 +123,48 @@ const updateUserProfile = async (req, res) => {
             return res.status(404).json({ message: 'User not found' });
         }
 
+        // ✅ CRITICAL FIX: Store original profileImage before any updates
+        const originalProfileImage = user.profileImage;
+
         // Update basic fields
         user.username = req.body.username || user.username;
         user.email = req.body.email || user.email;
         user.phoneNumber = req.body.phoneNumber || user.phoneNumber;
 
-        // ✅ CRITICAL FIX: Enhanced profile image handling with proper file detection
-        console.log('🔄 Profile update - File detected:', !!req.file);
-        console.log('🔄 Profile update - File details:', req.file ? {
-            originalname: req.file.originalname,
-            size: req.file.size,
-            mimetype: req.file.mimetype
-        } : 'No file');
+        // ✅ ENHANCED: Profile image handling with explicit preservation
+        console.log('📄 Profile update - Image handling:', {
+            hasFile: !!req.file,
+            originalImage: originalProfileImage,
+            fileDetails: req.file ? { name: req.file.originalname, size: req.file.size } : 'No file'
+        });
 
+        // ✅ CRITICAL: Only update profileImage if new file uploaded
         if (req.file && req.file.buffer) {
             try {
-                console.log('📤 Starting Cloudinary upload for profile update...');
-                console.log('File buffer size:', req.file.buffer.length);
-
+                console.log('🔤 Starting Cloudinary upload...');
                 const uploadedUrl = await uploadToCloudinary(req.file.buffer, 'profiles');
 
-                // ✅ CRITICAL: Only update if we got a valid Cloudinary URL
+                // ✅ Validate Cloudinary URL before saving
                 if (uploadedUrl && uploadedUrl.startsWith('https://res.cloudinary.com/')) {
                     user.profileImage = uploadedUrl;
-                    console.log('✅ Cloudinary upload successful for profile update:', uploadedUrl);
+                    console.log('✅ New profile image uploaded:', uploadedUrl);
                 } else {
-                    console.warn('⚠️ Invalid Cloudinary URL received:', uploadedUrl);
-                    // Preserve existing profile image - don't update
-                    console.log('ℹ️ Keeping existing profile image due to invalid URL');
+                    console.warn('⚠️ Invalid Cloudinary URL, keeping original:', originalProfileImage);
+                    user.profileImage = originalProfileImage; // ✅ Explicitly preserve
                 }
             } catch (cloudinaryError) {
-                console.error('❌ Cloudinary upload failed during profile update:', cloudinaryError.message);
-                // Don't update profileImage - keep existing one
-                // Don't return error - allow other fields to update
-                console.log('ℹ️ Profile image unchanged due to upload error');
+                console.error('❌ Cloudinary upload failed:', cloudinaryError.message);
+                // ✅ CRITICAL: Explicitly preserve original image on error
+                user.profileImage = originalProfileImage;
+                console.log('ℹ️ Preserved original profile image due to upload error');
             }
         } else {
-            console.log('ℹ️ No new profile image file provided - keeping existing image');
-            // ✅ CRITICAL: If no file, preserve existing profileImage
-            // Don't modify user.profileImage at all
+            // ✅ CRITICAL FIX: Explicitly preserve existing profileImage when no file uploaded
+            user.profileImage = originalProfileImage;
+            console.log('ℹ️ No new image uploaded - preserving existing:', originalProfileImage);
         }
 
-        // Handle payment details if provided
+        // Handle payment details
         if (req.body.paymentDetails) {
             try {
                 const paymentDetails = JSON.parse(req.body.paymentDetails);
@@ -176,31 +177,30 @@ const updateUserProfile = async (req, res) => {
             }
         }
 
-        // Handle password change if provided
+        // Handle password change
         if (req.body.password && req.body.password.trim()) {
             user.password = req.body.password;
         }
 
-        // ✅ Save and validate
+        // ✅ Save with validation
         const updatedUser = await user.save();
 
-        // ✅ CRITICAL: Ensure consistent profileImage response with actual database value
+        // ✅ CRITICAL: Verify profileImage is in response
+        console.log('✅ User saved - profileImage in DB:', updatedUser.profileImage);
+
+        // ✅ Response with explicit profileImage
         const responseData = {
             _id: updatedUser._id,
             username: updatedUser.username,
             email: updatedUser.email,
             role: updatedUser.role,
             phoneNumber: updatedUser.phoneNumber,
-            profileImage: updatedUser.profileImage, // ✅ Always return the actual value from DB
+            profileImage: updatedUser.profileImage, // ✅ Always include, even if null
             paymentDetails: updatedUser.paymentDetails || {},
             token: generateToken(updatedUser._id),
         };
 
-        console.log('✅ Profile update response prepared:', {
-            username: responseData.username,
-            profileImage: responseData.profileImage ? 'Present' : 'Null/Empty',
-            profileImageValue: responseData.profileImage // Log actual value for debugging
-        });
+        console.log('✅ Response profileImage:', responseData.profileImage);
 
         res.json(responseData);
 

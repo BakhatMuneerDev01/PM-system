@@ -40,26 +40,38 @@ export const AuthProvider = ({ children }) => {
     };
 
     // Update Profile
+
     const update = async (formData) => {
         try {
-            console.log('🔄 AuthContext: Sending update request...');
+            console.log('📤 AuthContext: Sending update request...');
             const res = await updateProfile(formData);
 
             console.log('✅ AuthContext: Response received:', {
                 username: res.data.username,
                 hasProfileImage: !!res.data.profileImage,
-                profileImage: res.data.profileImage
+                profileImageUrl: res.data.profileImage
             });
 
-            // ✅ FIX: Use the response data as the source of truth
+            // ✅ CRITICAL FIX: Merge response with existing user data
+            // Always trust backend response for profileImage
             const updatedUserData = {
-                ...res.data, // ✅ Use response data first
-                // Only fall back to existing user data for fields not in response
-                paymentDetails: res.data.paymentDetails || user?.paymentDetails || {}
+                ...user, // Preserve all existing user data first
+                ...res.data, // Override with new data from response
+                // ✅ Explicit profileImage handling
+                profileImage: res.data.profileImage || user.profileImage || null
             };
 
+            console.log('✅ Final user state:', {
+                username: updatedUserData.username,
+                profileImage: updatedUserData.profileImage
+            });
+
             setUser(updatedUserData);
-            console.log('✅ AuthContext: User state updated');
+
+            // ✅ Update localStorage token if provided
+            if (res.data.token) {
+                localStorage.setItem("token", res.data.token);
+            }
 
             return res.data;
         } catch (error) {
